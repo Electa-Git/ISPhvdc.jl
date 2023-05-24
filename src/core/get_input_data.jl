@@ -1,5 +1,39 @@
+function download_isp_data()
+    # Download ISP input workbook
+    mkdir(joinpath("data", "inputs"))
+    filename_inputs = joinpath("data", "Inputs", "Inputs assumptions and scenarios workbook.xlsx") 
+    url_inputs = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/inputs-assumptions-and-scenarios-workbook.xlsx?la=en"
+    Downloads.download(url_inputs, filename_inputs)
+
+
+    filename_solar = joinpath("data", "2022-isp-solar-traces.zip") 
+    url_solar = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-solar-traces.zip?la=en"
+    Downloads.download(url_solar, filename_solar)
+    InfoZIP.unzip(filename_solar, "data")
+    rm(filename_solar)
+
+    filename_wind = joinpath("data", "2022 ISP Wind traces.zip") 
+    url_wind = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-wind-traces.zip?la=en"
+    Downloads.download(url_wind, filename_wind)
+    InfoZIP.unzip(filename_wind, "data")
+    rm(filename_wind)
+
+    filename_generation = joinpath("data", "Generation outlook.zip") 
+    url_generation = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/generation-outlook.zip?la=en"
+    Downloads.download(url_generation, filename_generation)
+    mkdir(joinpath("data", "Generation outlook"))
+    InfoZIP.unzip(filename_generation, "data/Generation outlook")
+    rm(filename_generation)
+    
+    filename_model= joinpath("data", "2022 ISP model.zip") 
+    url_model= "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-model.zip?la=en"
+    Downloads.download(url_model, filename_model)
+    InfoZIP.unzip(filename_model, "data")
+    rm(filename_model)
+end
+
 function get_demand_data(scenario, year)
-    data_folder = joinpath("Data", "2022 Final ISP Model", scenario, "Traces", "demand")
+    data_folder = joinpath("data", "2022 Final ISP Model", scenario, "Traces", "demand")
     all_demand_files = readdir(data_folder)
 
     demand = Dict{String, Any}()
@@ -27,7 +61,7 @@ end
 
 
 function get_dn_demand_data(scenario, year)
-    data_folder = joinpath("Data", "2022 Final ISP Model", scenario, "Traces", "load_subtractor")
+    data_folder = joinpath("data", "2022 Final ISP Model", scenario, "Traces", "load_subtractor")
     all_demand_files = readdir(data_folder)
 
     demand = Dict{String, Any}("PV" => Dict{String, Any}(), "Wind" => Dict{String, Any}())
@@ -70,7 +104,7 @@ end
 
 
 function get_rez_capacity_data(scenario, year)
-    data_folder = joinpath("Data", "Generation Outlook", "Final ISP Results", "Scenarios")
+    data_folder = joinpath("data", "Generation Outlook", "Final ISP Results", "Scenarios")
     file_name = joinpath(data_folder, join(["2022 Final ISP results workbook - ", scenario[10:end], " - Updated Inputs.xlsx"]))
     rez_pv = XLSX.readdata(file_name, "REZ Generation Capacity", "A419:AG455")
     rez_onshore_wind = XLSX.readdata(file_name, "REZ Generation Capacity", "A457:AG493") # Counterfactual -> has largest installed RES
@@ -93,7 +127,7 @@ end
 
 function get_rez_grid_extensions()
     
-    file_name = joinpath("Data", "NEM_REZ_extensions.xlsx")
+    file_name = joinpath("data", "NEM_REZ_extensions.xlsx")
     ac = XLSX.readdata(file_name, "AC", "A1:S34")
     dc = XLSX.readdata(file_name, "DC", "A1:P5")
     
@@ -104,8 +138,8 @@ function get_rez_grid_extensions()
 end
 
 function get_generator_information()
-    data_folder = joinpath("Data")
-    file_name = joinpath(data_folder, "Inputs", "Inputs assumptions and scenarios workbook.xlsx")
+    data_folder = joinpath("data")
+    file_name = joinpath(data_folder, "inputs", "Inputs assumptions and scenarios workbook.xlsx")
     gen_info_existing = XLSX.readdata(file_name, "Existing Gen Data Summary", "B12:U229")
     gen_info_committed = XLSX.readdata(file_name, "Existing Gen Data Summary", "B232:U277")
     gen_info_anticipated = XLSX.readdata(file_name, "Existing Gen Data Summary", "B281:U294")
@@ -141,7 +175,7 @@ end
 
 
 function get_pv_timeseries(year)
-    data_folder = joinpath("Data", "ISP Solar Traces r2021")
+    data_folder = joinpath("data", "solar")
     all_files = readdir(data_folder)
 
     pv = Dict{String, Any}()
@@ -157,6 +191,7 @@ function get_pv_timeseries(year)
         elseif !isempty(findall("PEG", file))
             plant = file[1:(findall("PEG", file)[1][1] - 2)]
         end
+        print(file)
         print("Reading PV trace for ", plant, "\n")
         pv_plant = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
         pv[plant] = pv_plant[pv_plant[!, :Year] .== year, :]
@@ -166,7 +201,7 @@ function get_pv_timeseries(year)
 end
 
 function get_wind_timeseries(year)
-    data_folder = joinpath("Data", "ISP Wind Traces r2021")
+    data_folder = joinpath("data", "wind")
     all_files = readdir(data_folder)
 
     wind = Dict{String, Any}()
@@ -468,6 +503,9 @@ function add_dc_bus!(data, row, dcbus)
 
     push!(data["busdc"], "$dcbus" => busdc)
 end
+
+
+
 
 
 

@@ -17,6 +17,8 @@ import ExcelFiles
 const _EF = ExcelFiles
 import StringDistances
 const _SD = StringDistances
+import Downloads
+import InfoZIP
 
 
 # Create our module level logger (this will get precompiled)

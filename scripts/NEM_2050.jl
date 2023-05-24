@@ -3,35 +3,25 @@ using Pkg
 using ISPhvdc
 using PowerModels
 using PowerModelsACDC
+using CbaOPF
 using NEM_2300bus
 using JuMP
 using Ipopt
 using Plots
-using DataFrames
-using SCS
-using EU_grid_operations
 using PlotlyJS
 using PowerPlots
 using DataFrames
 using CSV
 using Gurobi
-using CbaOPF
-using XLSX
-using ExcelFiles
-using StringDistances
 using StatsPlots
 using StatsBase
 using Statistics
 
 # Create short hands for the most important ones
 const _PM = PowerModels
-const _SNEM = NEM_2300bus
 const _PMACDC = PowerModelsACDC
-const _EUGO = EU_grid_operations
+const _SNEM = NEM_2300bus
 const _PP = PowerPlots
-const _DF = DataFrames
-const _EF = ExcelFiles
-const _SD = StringDistances
 const _SB = StatsBase
 const _ISP = ISPhvdc
 
@@ -46,16 +36,26 @@ year = 2049
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
 selected_hours = Dict{String, Any}("hour_range" => 1:1440)
+# State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
+download_data = true
 # Select OPF method opf ∈ {"AC", "DC"}
 opf = "DC"
-
 # Assign solvers
-ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "tol" => 1e-6, "linear_solver" => "ma27", "max_iter" => 1000, "print_level" => 0)
+ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0) # To use HSL: "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27",
 dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 
+
+############ END INPUT SECTION ##############################
+
+
+
 #############################################################
-######### METHOD ###############
-# OPtimisation settings for CbaOPF.jl
+#################### START METHODOLOGY ######################
+if download_data == true
+    _ISP.download_isp_data()
+end
+
+# Optimisation settings for CbaOPF.jl
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
 
 # Test case data

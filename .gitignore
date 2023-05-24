@@ -1,4 +1,5 @@
 data/2022 Final ISP Model/
 data/Generation outlook/
-data/ISP Solar Traces r2021
-data/ISP Wind Traces r2021
+data/solar
+data/wind
+data/inputs

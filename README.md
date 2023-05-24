@@ -13,13 +13,18 @@ You can clone the package and add it to your julia environment using
 There is an example script located under "scripts/NEM_2050.jl" where you can manipulate the input section for
 
 - Selecting the ISP scenario and climate year
+- Selecting if data should be dowloaded from AEMO (to avoid putting ~500 MB of data on the repository)
+- - Data only needs to be downloaded in the first run. .gitignore takes care it is not pushed to the repository.
 - Selecting the (half) hours to run the calculations
 - Selecting the OPF formulation, e.g. AC OPF vs. DC OPF
 - Assigning solvers
+
+The rest of the functions you don't necesserily need to manipulate. Once the OPFs are performed, there are some sample code snippets to analyse the results in more detail.
 
 # To Do:
 
 - Further validate results
 - Create functions to run OPF in batch
+- Write functions for better processing of results
 - Apply clustering to operating hours to limit computation time for AC OPF
 - Extend with WEM model if data becomes available
