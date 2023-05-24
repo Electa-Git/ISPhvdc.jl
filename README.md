@@ -1,1 +1,25 @@
 # ISPhvdc.jl
+
+This package provides the code to populate the 2000 bus NEM system with the PV, wind and demand traces coming from the ISP 2022.
+
+## Usage:
+You can clone the package and add it to your julia environment using 
+
+```julia
+] develop https://github.com/hakanergun/ISPhvdc.jl.git
+```
+## Examples:
+
+There is an example script located under "scripts/NEM_2050.jl" where you can manipulate the input section for
+
+- Selecting the ISP scenario and climate year
+- Selecting the (half) hours to run the calculations
+- Selecting the OPF formulation, e.g. AC OPF vs. DC OPF
+- Assigning solvers
+
+# To Do:
+
+- Further validate results
+- Create functions to run OPF in batch
+- Apply clustering to operating hours to limit computation time for AC OPF
+- Extend with WEM model if data becomes available

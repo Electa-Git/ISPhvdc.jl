@@ -1,0 +1,478 @@
+function get_demand_data(scenario, year)
+    data_folder = joinpath("Data", "2022 Final ISP Model", scenario, "Traces", "demand")
+    all_demand_files = readdir(data_folder)
+
+    demand = Dict{String, Any}()
+    demand_series = Dict{String, Any}()
+
+    for file in all_demand_files
+        region = file[1:(collect(findfirst("_", file)).-1)[1]]
+        print("Reading demand trace for ", region, "\n")
+        demand_region = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
+        demand[region] = demand_region[demand_region[!, :Year] .== year, :]
+    end
+
+    demand_states = aggregate_demand(demand)
+    
+
+    for (d, demand) in demand_states
+        demand_series[d] = zeros(1, 48 * _DF.nrow(demand))
+        for row in 1:_DF.nrow(demand)
+            demand_series[d][(((row-1) * 48) + 1) : (row * 48)] = collect(values(demand[row, 4:end]))
+        end
+    end
+
+    return demand_series
+end
+
+
+function get_dn_demand_data(scenario, year)
+    data_folder = joinpath("Data", "2022 Final ISP Model", scenario, "Traces", "load_subtractor")
+    all_demand_files = readdir(data_folder)
+
+    demand = Dict{String, Any}("PV" => Dict{String, Any}(), "Wind" => Dict{String, Any}())
+
+    for file in all_demand_files
+        region = file[(collect(findall("_", file)[2])[1] + 1) : (collect(findall("_", file)[3])[1] - 1)]
+        type =  file[(collect(findall("_", file)[1])[1] + 1) : (collect(findall("_", file)[2])[1] - 1)]
+        print("Reading ", type, " load subtractor trace for ", region, "\n")
+        demand_region = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
+        demand[type][region] = demand_region[demand_region[!, :Year] .== year, :]
+    end
+
+    demand_series = Dict{String, Any}()
+    for (t, type) in demand
+        demand_series[t] = Dict{String, Any}()
+        for (s, state) in type
+            demand_series[t][s] = zeros(1, 48 * _DF.nrow(state))
+            for row in 1:_DF.nrow(state)
+                demand_series[t][s][(((row-1) * 48) + 1) : (row * 48)] = collect(values(state[row, 4:end]))
+            end
+        end
+    end
+
+    return demand_series
+end
+
+function aggregate_demand(demand)
+
+    aggregated_demand = Dict{String, Any}("NSW" => demand["NNSW"], "VIC" => demand["VIC"], "QLD" => demand["SQ"], "SA" => demand["SA"], "TAS" => demand["TAS"])
+
+    for i in 1:size(aggregated_demand["NSW"], 1)
+        for j in 4:size(aggregated_demand["NSW"], 2) 
+            aggregated_demand["NSW"][i, j] = demand["NNSW"][i, j] + demand["SNSW"][i, j] + demand["CNSW"][i, j] + demand["SNW"][i, j]
+            aggregated_demand["QLD"][i, j] = demand["SQ"][i, j] + demand["CNQ"][i, j] + demand["GG"][i, j]
+        end
+    end
+
+    return aggregated_demand
+end
+
+
+function get_rez_capacity_data(scenario, year)
+    data_folder = joinpath("Data", "Generation Outlook", "Final ISP Results", "Scenarios")
+    file_name = joinpath(data_folder, join(["2022 Final ISP results workbook - ", scenario[10:end], " - Updated Inputs.xlsx"]))
+    rez_pv = XLSX.readdata(file_name, "REZ Generation Capacity", "A419:AG455")
+    rez_onshore_wind = XLSX.readdata(file_name, "REZ Generation Capacity", "A457:AG493") # Counterfactual -> has largest installed RES
+    rez_offshore_wind = XLSX.readdata(file_name, "REZ Generation Capacity", "A495:AG500")# Counterfactual -> has largest installed RES
+
+    REZ_capacity = Dict{String, Any}()
+
+    year_idx = (year - 2024) + 6
+
+    if year > 2051
+        print("The selected year is out of range, installed capacities are provided between 2024 and 2051", "\n")
+    else
+        REZ_capacity["pv"] = rez_pv[:, [1, 2, 3, 4, 5, year_idx]]
+        REZ_capacity["onshore_wind"] = rez_onshore_wind[:, [1, 2, 3, 4, 5, year_idx]]
+        REZ_capacity["offshore_wind"] = rez_offshore_wind[:, [1, 2, 3, 4, 5, year_idx]]
+    end
+
+    return REZ_capacity
+end
+
+function get_rez_grid_extensions()
+    
+    file_name = joinpath("Data", "NEM_REZ_extensions.xlsx")
+    ac = XLSX.readdata(file_name, "AC", "A1:S34")
+    dc = XLSX.readdata(file_name, "DC", "A1:P5")
+    
+    rez_extensions = Dict{String, Any}()
+    rez_extensions["ac"] = ac
+    rez_extensions["dc"] = dc
+    return rez_extensions
+end
+
+function get_generator_information()
+    data_folder = joinpath("Data")
+    file_name = joinpath(data_folder, "Inputs", "Inputs assumptions and scenarios workbook.xlsx")
+    gen_info_existing = XLSX.readdata(file_name, "Existing Gen Data Summary", "B12:U229")
+    gen_info_committed = XLSX.readdata(file_name, "Existing Gen Data Summary", "B232:U277")
+    gen_info_anticipated = XLSX.readdata(file_name, "Existing Gen Data Summary", "B281:U294")
+
+    gen_info = [gen_info_existing; gen_info_committed; gen_info_anticipated]
+
+    remove_extra_info!(gen_info)
+
+    return gen_info
+end
+
+function remove_extra_info!(gen_info)
+    for idx = 1:size(gen_info, 1)
+        gen_name = gen_info[idx, 1]
+        if !isnothing(findfirst("Solar", gen_name))
+            solar_idx = collect(findfirst("Solar", gen_name))[1] - 2
+            gen_info[idx, 1] = gen_name[1:solar_idx]
+        elseif !isnothing(findfirst("Wind", gen_name))
+            wind_idx = collect(findfirst("Wind", gen_name))[1] - 2
+            gen_info[idx, 1] = gen_name[1:wind_idx]
+        end
+    end 
+
+    return gen_info
+end
+
+function get_res_timeseries(year)
+    pv = get_pv_timeseries(year)
+    wind = get_wind_timeseries(year)
+
+    return pv, wind
+end
+
+
+function get_pv_timeseries(year)
+    data_folder = joinpath("Data", "ISP Solar Traces r2021")
+    all_files = readdir(data_folder)
+
+    pv = Dict{String, Any}()
+
+    for file in all_files
+
+        if !isempty(findall("SAT", file))
+            plant = file[1:(findall("SAT", file)[1][1] - 2)]
+        elseif !isempty(findall("CST", file))
+            plant = file[1:(findall("CST", file)[1][1] - 2)]
+        elseif !isempty(findall("FFP", file))
+            plant = file[1:(findall("FFP", file)[1][1] - 2)]
+        elseif !isempty(findall("PEG", file))
+            plant = file[1:(findall("PEG", file)[1][1] - 2)]
+        end
+        print("Reading PV trace for ", plant, "\n")
+        pv_plant = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
+        pv[plant] = pv_plant[pv_plant[!, :Year] .== year, :]
+    end
+
+    return pv
+end
+
+function get_wind_timeseries(year)
+    data_folder = joinpath("Data", "ISP Wind Traces r2021")
+    all_files = readdir(data_folder)
+
+    wind = Dict{String, Any}()
+
+    for file in all_files
+        plant = file[1:(findall("Ref", file)[1][1] - 2)]
+        print("Reading Wind trace for ", plant, "\n")
+        wind_plant = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
+        wind[plant] = wind_plant[wind_plant[!, :Year] .== year, :]
+    end
+
+    return wind
+end
+
+
+function aggregate_res_timeseries(res_ts, generator_info, type::String)
+
+    aggregated_res = Dict{String, Any}("NSW" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0), "VIC" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0), 
+    "QLD" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0), "SA" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0), "TAS" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0))
+
+    res_series = Dict{String, Any}("NSW" => [], "VIC" => [], "QLD" => [], "SA" => [], "TAS" => [])
+    count = Dict{String, Any}("NSW" => 0, "VIC" => 0, "QLD" => 0, "SA" => 0, "TAS" => 0)
+    for (plant, profile) in res_ts
+        if plant[1:3] !== "REZ" && plant[3] !== '_'
+            similarity = [_SD.compare(lowercase(plant), lowercase(generator_info[idx, 1]), _SD.Jaro()) for idx in findall(generator_info[:, 6] .== type)]
+            ids = [idx for idx in findall(generator_info[:, 6] .== type)]
+            best_fit = findmax(similarity)[2][1]
+            name =  generator_info[ids[best_fit], 1]
+            state = generator_info[ids[best_fit], 3]
+            print(plant, " -> ", name, "\n")
+            count[state] = count[state] + 1
+            if isempty(res_series[state])
+                res_series[state] = zeros(1, 48 * _DF.nrow(profile))
+                for row in 1:_DF.nrow(profile)
+                    res_series[state][(((row-1) * 48) + 1) : (row * 48)] = collect(values(profile[row, 4:end]))
+                end
+            else
+                for row in 1:_DF.nrow(profile)
+                    res_series[state][(((row-1) * 48) + 1) : (row * 48)] = res_series[state][(((row-1) * 48) + 1) : (row * 48)] .+ collect(values(profile[row, 4:end]))
+                end
+            end
+        end
+    end
+
+    for (s, state) in res_series
+        res_series[s] = res_series[s] ./ count[s]
+    end
+
+    return res_series, count
+
+end
+
+function make_rez_time_series(res_ts)
+    ts = Dict{String, Any}()
+    rez_name = nothing
+    for (plant, profile) in res_ts
+        if plant[1:3] == "REZ"
+            rez_name = plant[5:6]
+        elseif plant[3] == '_'
+            rez_name = plant[1:2]
+        end
+        if !isnothing(rez_name)
+            res_series = zeros(1, 48 * _DF.nrow(profile))
+            for row in 1:_DF.nrow(profile)
+                res_series[(((row-1) * 48) + 1) : (row * 48)] = collect(values(profile[row, 4:end]))
+            end
+            push!(ts, rez_name => res_series)
+        end
+    end
+    return ts
+end
+
+function add_rez_and_connections!(data, extensions, rez)
+
+    for row in eachrow(extensions["ac"])
+        if row[1] !== "REZ ID"
+            if row[15] !== 0
+                tbus = row[15]             
+            else
+                tbus = maximum(sort(parse.(Int, keys(data["bus"])))) + 1
+                add_ac_bus!(data, row, tbus)
+            end
+            add_ac_branch!(data, row, tbus)
+            add_generator!(data, row, tbus, rez)
+        end 
+    end
+
+    for row in eachrow(extensions["dc"])
+        if row[1] !== "REZ ID"
+            fbus = row[11]
+            if row[12] !== 0
+                tbus = row[12]             
+            else
+                tbus = maximum(sort(parse.(Int, keys(data["bus"])))) + 1
+                add_ac_bus!(data, row, tbus)
+            end
+            fbusdc = maximum(sort(parse.(Int, keys(data["busdc"])))) + 1
+            tbusdc = maximum(sort(parse.(Int, keys(data["busdc"])))) + 2
+            add_dc_bus!(data, row, fbusdc)
+            add_dc_bus!(data, row, tbusdc)
+            add_dc_converter!(data, row, fbus, fbusdc)
+            add_dc_converter!(data, row, tbus, tbusdc)
+            add_dc_branch!(data, row, fbusdc, tbusdc)
+            if row[1] !== "MARINUS"
+                add_generator!(data, row, tbus, rez)
+            end
+        end 
+    end
+
+    return data
+end
+
+
+function add_ac_branch!(data, row, tbus)
+    for circuits in 1:row[8]
+        branch_id = maximum(sort(parse.(Int, keys(data["branch"])))) + 1
+        branch = Dict{String, Any}()
+        fbus = row[14]
+        branch["f_bus"] = fbus
+        branch["t_bus"] = tbus
+        base_kv = row[6]
+        base_mva = data["baseMVA"]
+        branch["br_r"] = to_pu_z(row[11], base_kv, base_mva)
+        branch["br_x"] = to_pu_z(row[12], base_kv, base_mva)
+        branch["b_fr"] = to_pu_y(row[13], base_kv, base_mva) / 2
+        branch["b_to"] = to_pu_y(row[13], base_kv, base_mva) / 2
+        branch["g_fr"] = branch["g_to"] = 0.0
+        branch["br_status"] = 1
+        branch["rate_a"] = branch["rate_b"] = branch["rate_c"] =  row[7] / base_mva
+        branch["name"] = join(["conenction ", row[1, 1]])
+        branch["index"] = branch_id
+        branch["angmin"] = - pi / 3
+        branch["angmax"] =   pi / 3
+        branch["transformer"] = row[10]
+        branch["tap"] = 1.0
+        branch["shift"] = 0.0
+        push!(data["branch"], "$branch_id" => branch)
+    end
+end
+
+function to_pu_z(z, base_kv, base_mva)
+    z_base = (base_kv * 1e3)^2 / (base_mva * 1e6)
+    z_pu = z / z_base
+    return z_pu
+end
+
+function to_pu_y(y, base_kv, base_mva)
+    y_base =  (base_mva * 1e6) / (base_kv * 1e3)^2
+    y_pu = y / y_base
+    return y_pu
+end
+
+function add_ac_bus!(data, row, tbus)
+    bus = Dict{String, Any}()
+    bus["zone"] = 1
+    bus["index"] = tbus
+    bus["bus_i"] = tbus
+    bus["bus_type"] = 2
+    bus["name"] = join(["conenction ", row[1, 1]])
+    bus["va"] = 0.0
+    bus["vm"] = 1.0
+    bus["vmax"] = 1.1
+    bus["vmin"] = 0.9
+    bus["base_kv"] = row[6]
+    if length(row) > 16
+        bus["lat"] = row[18]
+        bus["lon"] = row[19]
+    else
+        bus["lat"] = row[15]
+        bus["lat"] = row[16]
+    end
+    area_ = 0
+    for (area_idx, area) in data["areas"]
+        if area[1] == row[1][1]
+            area_ = parse(Int, area_idx)
+        end
+    end
+    bus["area"] = area_
+
+    push!(data["bus"], "$tbus" => bus)
+end
+
+function add_generator!(data, row, tbus, rez_capacities)
+    if any(row[1] .== rez_capacities["pv"][:,3])
+        gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
+        rez_id = findfirst(row[1] .== rez_capacities["pv"][:, 3])
+        gen = generator_data(tbus, rez_capacities["pv"][rez_id, :], gen_id, "Solar", data["baseMVA"])
+        push!(data["gen"], "$gen_id" => gen)
+    end
+    if any(row[1] .== rez_capacities["onshore_wind"][:,3])
+        gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
+        rez_id = findfirst(row[1] .== rez_capacities["onshore_wind"][:, 3])
+        gen = generator_data(tbus, rez_capacities["onshore_wind"][rez_id, :], gen_id, "Wind", data["baseMVA"])
+        push!(data["gen"], "$gen_id" => gen)
+    end
+
+    # To Do: Add offshore wind
+end
+
+function generator_data(tbus, rez, gen_id, type, basemva)
+    gen = Dict{String, Any}()
+    power = rez[end]
+    gen["mbase"] = gen["pmax"] = power / basemva
+    gen["qmax"] =  power / 2 / basemva
+    gen["qmin"] = -power / 2 / basemva
+    gen["name"] = rez[3]
+    gen["pmin"] = gen["qg"] =  gen["pg"] = 0
+    gen["ncost"] = 2
+    gen["model"] = 2
+    gen["gen_bus"] = tbus
+    gen["index"] = gen_id
+    gen["fuel"] = type
+    gen["cost"] = [0.0 0.0] # check for correct costs later
+    gen["gen_status"] = 1
+    gen["type"] = type
+
+    return gen
+end
+
+
+function add_dc_converter!(data, row, acbus, dcbus_id)
+    for circuits in 1:row[8]
+        conv_id = maximum(sort(parse.(Int, keys(data["convdc"])))) + 1
+        conv = Dict{String, Any}()
+
+        conv["busac_i"] = acbus
+        conv["busdc_i"] = dcbus_id
+        conv["type_dc"] = 2
+        conv["type_ac"] = 1
+        conv["index"] = conv_id
+        conv["P_g"] = conv["Q_g"] = conv["dVdcset"] = conv["Pdcset"] = conv["droop"] = 0
+        conv["islcc"] = 0
+        conv["status"] = 1
+        conv["Vdcset"] = conv["Vtar"] = conv["tm"] = 1
+        conv["filter"] = conv["reactor"] = conv["transformer"] = 0
+        conv["Vmmax"] = 1.1
+        conv["Vmmin"] = 0.9
+
+        conv["Pacmax"] =  row[7] / data["baseMVA"]
+        conv["Pacmin"] = -row[7] / data["baseMVA"]
+        conv["Qacmax"] =  row[7] / 2  / data["baseMVA"]
+        conv["Qacmin"] = -row[7] / 2 / data["baseMVA"]
+        conv["Pacmax"] =  row[7] / data["baseMVA"]
+        conv["Pacrated"] = conv["Imax"] = 1.1 * row[7] / data["baseMVA"]
+        conv["Qacrated"] = 1.1 * row[7] / 2 / data["baseMVA"]
+        conv["basekVac"] = row[6]
+
+        acbus_voltage = data["bus"]["$acbus"]["base_kv"] 
+        zbase = (acbus_voltage * 1e3)^2 / (data["baseMVA"] * 1e6)
+        zbase_dc = (row[6] * 1e3)^2 / (data["baseMVA"] * 1e6)
+        xr_trafo = 35
+        sc_trafo = 0.15
+        xr_reactor = 30
+        sc_reactor = 7.5
+
+        ztf = (acbus_voltage * 1e3)^2 / (row[7] * 1e6) * sc_trafo
+        zreactor= (acbus_voltage * 1e3)^2 / (row[7] * 1e6) * sc_reactor
+        conv["rtf"] = ztf * cos(atan(xr_trafo)) / zbase
+        conv["xtf"] = ztf * sin(atan(xr_trafo)) / zbase
+        conv["rc"] = zreactor * cos(atan(xr_reactor)) / zbase
+        conv["xc"] = zreactor * sin(atan(xr_reactor)) / zbase
+        conv["bf"] = 0
+        conv["LossA"] = 1.1033 * 1e-3 * row[7]
+        conv["LossB"] = 0.0035 * acbus_voltage * sqrt(3)
+        conv["LossCinv"] = conv["LossCrec"] = 0.0035 / row[7] * zbase_dc
+
+        push!(data["convdc"], "$conv_id" => conv)
+    end
+
+end
+
+function add_dc_branch!(data, row, dcbus_id1, dcbus_id2)
+    for circuits in 1:row[8]
+        dcbranch_id = maximum(sort(parse.(Int, keys(data["branchdc"])))) + 1
+        dcbranch = Dict{String, Any}()
+        dcbranch["fbusdc"] = dcbus_id1
+        dcbranch["tbusdc"] = dcbus_id2
+        dcbranch["rateA"] = dcbranch["rateB"] = dcbranch["rateC"] = row[7] / data["baseMVA"]
+        dcbranch["index"] = dcbranch_id
+        dcbranch["l"] = dcbranch["c"] = 0
+        dcbranch["status"] = 1
+        dcvoltage = data["busdc"]["$dcbus_id1"]["basekVdc"]
+        zbase = (dcvoltage * 1e3)^2 / (data["baseMVA"] * 1e6)
+        dcbranch["r"] = row[10] / zbase
+
+        push!(data["branchdc"], "$dcbranch_id" => dcbranch)
+    end
+end
+
+function add_dc_bus!(data, row, dcbus)
+    busdc = Dict{String, Any}()
+    busdc["basekVdc"] = row[6]
+    busdc["index"] = busdc["busdc_i"] = dcbus 
+    busdc["Vdc"] = 1
+    busdc["Cdc"] = busdc["Pdc"] = 0
+    busdc["grid"] = 1
+    busdc["Vdcmax"] = 1.1
+    busdc["Vdcmin"] = 0.9
+
+    push!(data["busdc"], "$dcbus" => busdc)
+end
+
+
+
+
+
+
+
+
