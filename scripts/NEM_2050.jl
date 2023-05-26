@@ -68,9 +68,9 @@ data_hvdc = _PM.parse_file(data_folder*"/"*data_file_hvdc)
 # Process data to fit into PMACDC model
 _PMACDC.process_additional_data!(data_hvdc)
 # Delete DC lines which have been modelled as AC lines
-_SNEM.fix_hvdc_data_issues!(data_hvdc)
+_ISP.fix_hvdc_data_issues!(data_hvdc)
 # Assign buses to states
-_SNEM.add_area_dict!(data_hvdc)
+_ISP.add_area_dict!(data_hvdc)
 # Extend data model with flexible demand, to be able to do demand shedding if required
 _ISP.add_demand_data!(data_hvdc)
 

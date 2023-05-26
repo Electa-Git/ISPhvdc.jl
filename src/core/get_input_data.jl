@@ -504,7 +504,40 @@ function add_dc_bus!(data, row, dcbus)
     push!(data["busdc"], "$dcbus" => busdc)
 end
 
+function fix_hvdc_data_issues!(data; no_bass = false, no_terra = false, no_murray = false)
 
+    if no_bass == false
+        # BASS LINK 
+        data["branch"]["543"]["br_status"] = 0
+        delete!(data["bus"], "2113")
+        data["gen"]["264"]["gen_status"] = 0
+        data["gen"]["265"]["gen_status"] = 0
+    end
+
+    if no_terra == false
+        # TERRANORALINK
+        data["branch"]["1568"]["br_status"] = 0
+        data["branch"]["1569"]["br_status"] = 0
+        data["branch"]["1570"]["br_status"] = 0
+    end
+
+    if no_murray ==false
+        # MURRAYLINK
+        data["branch"]["1949"]["br_status"] = 0
+        data["gen"]["222"]["gen_status"] = 0
+    end
+
+    return data
+end
+
+function add_area_dict!(data_nem)
+    data_nem["areas"] = Dict{String, Any}()
+    data_nem["areas"]["1"] = "NSW"
+    data_nem["areas"]["2"] = "VIC"
+    data_nem["areas"]["3"] = "QLD"
+    data_nem["areas"]["4"] = "SA"
+    data_nem["areas"]["5"] = "TAS"
+end
 
 
 
