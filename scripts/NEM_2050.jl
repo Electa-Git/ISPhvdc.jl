@@ -60,7 +60,7 @@ end
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
 
 # Test case data
-data_folder = joinpath(dirname(pathof(NEM_2300bus)),"..","data/matpower")
+data_folder = joinpath("data")
 data_file_hvdc = "nem_2300bus_thermal_limits_gen_costs_hvdc.m"
 
 # Get grid data from the NEM 2000 bus model m-file 
