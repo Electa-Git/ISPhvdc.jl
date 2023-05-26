@@ -29,9 +29,9 @@ const _ISP = ISPhvdc
 
 # SELECT SCENARIO
 # scenario ∈ {"2022 ISP Hydrogen Superpower", "2022 ISP Progressive Change", "2022 ISP Slow Change", "2022 ISP Step Change"}
-scenario = "2022 ISP Step Change"
+scenario = "2022 ISP Hydrogen Superpower"
 # select climate year ∈ [2024:2051]
-year = 2024
+year = 2034
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
@@ -41,8 +41,9 @@ download_data = false
 # Select OPF method opf ∈ {"AC", "DC", "LPAC"}
 opf = "LPAC"
 # Assign solvers
-ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
+ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0) #, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
 dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
+lpac_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 
 
 ############ END INPUT SECTION ##############################
@@ -143,7 +144,7 @@ for hour in hours
     elseif opf == "LPAC"
         opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.LPACCPowerModel, dc_solver, setting = s)
     elseif opf == "DC"
-        opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.DCPPowerModel, dc_solver, setting = s)
+        opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.DCPPowerModel, lpac_solver, setting = s)
     end
     # Write out general information
     print("Hour: ", hour, " -> ", opf_result["termination_status"], " in ", opf_result["solve_time"], " seconds.", "\n")
