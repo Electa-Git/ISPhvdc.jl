@@ -29,24 +29,24 @@ const _ISP = ISPhvdc
 
 # SELECT SCENARIO
 # scenario ∈ {"2022 ISP Hydrogen Superpower", "2022 ISP Progressive Change", "2022 ISP Slow Change", "2022 ISP Step Change"}
-scenario = "2022 ISP Hydrogen Superpower"
+scenario = "2022 ISP Step Change"
 # select climate year ∈ [2024:2051]
-year = 2049
+year = 2024
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:1440)
+selected_hours = Dict{String, Any}("hour_range" => 1:12)
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
-download_data = true
-# Select OPF method opf ∈ {"AC", "DC"}
-opf = "DC"
+download_data = false
+# Select OPF method opf ∈ {"AC", "DC", "LPAC"}
+opf = "LPAC"
 # Assign solvers
-ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0) # To use HSL: "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27",
+ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
 dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 
 
 ############ END INPUT SECTION ##############################
-
+#############################################################
 
 
 #############################################################
@@ -75,6 +75,7 @@ _ISP.add_demand_data!(data_hvdc)
 
 # Get demand traces for selected year, for each state
 total_demand_series = _ISP.get_demand_data(scenario, year)
+average_demand_per_state = Dict{String, Any}([state => mean(timeseries) for (state, timeseries) in total_demand_series])
 # Create demand series for whole Australia for plotting and inspection
 aggregated_demand_series = sum([ts for (state, ts) in total_demand_series])
 # Plot the demand series
@@ -124,7 +125,7 @@ pg = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in h
 # Run hourly OPF calcuations
 for hour in hours
     # Write hourly pv, wind and demand traces into opf data
-    _ISP.prepare_hourly_opf_data!(hourly_data, opf_data, total_demand_series, dn_demand_series, pv_series, wind_series, pv_rez, wind_rez, hour)
+    _ISP.prepare_hourly_opf_data!(hourly_data, opf_data, total_demand_series, average_demand_per_state, pv_series, wind_series, pv_rez, wind_rez, hour)
     # calculate some charactersitics for result inspecttion
     pd_max = sum([load["pd"] for (l, load) in opf_data["load"]]) * hourly_data["baseMVA"]
     pg_max = sum([gen["pmax"] for (g, gen) in opf_data["gen"]]) * hourly_data["baseMVA"]
@@ -139,20 +140,26 @@ for hour in hours
     # Solve OPF
     if opf == "AC"
         opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.ACPPowerModel, ac_solver, setting = s)
-    else
+    elseif opf == "LPAC"
+        opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.LPACCPowerModel, dc_solver, setting = s)
+    elseif opf == "DC"
         opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.DCPPowerModel, dc_solver, setting = s)
     end
     # Write out general information
     print("Hour: ", hour, " -> ", opf_result["termination_status"], " in ", opf_result["solve_time"], " seconds.", "\n")
     # calculate and print some more information base on results
-    pcurt["$hour"] = [opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
-    pd["$hour"] = [hourly_data["load"]["$l"]["pd"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
-    pcurt_tot = sum([opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]) * hourly_data["baseMVA"]
+    if haskey(opf_result["solution"], "load")
+        pd["$hour"] = [hourly_data["load"]["$l"]["pd"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
+        pgmax["$hour"] = [hourly_data["gen"]["$g"]["pmax"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
+        pcurt["$hour"] = [opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
+        pcurt_tot = sum([opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]) * hourly_data["baseMVA"]
+        pf["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))] ./ [hourly_data["branch"]["$b"]["rate_a"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branch"]))))]
+        pfdc["$hour"] = [opf_result["solution"]["branchdc"]["$b"]["pf"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))] ./ [hourly_data["branchdc"]["$b"]["rateA"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))]
+        pg["$hour"] = [opf_result["solution"]["gen"]["$g"]["pg"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
+    else
+        pcurt_tot = 0
+    end
     print("Total curtailed load = ", pcurt_tot, " MW, ", pcurt_tot / pdh_max * 100,"%", "\n")
-    pf["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))] ./ [hourly_data["branch"]["$b"]["rate_a"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branch"]))))]
-    pfdc["$hour"] = [opf_result["solution"]["branchdc"]["$b"]["pf"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))] ./ [hourly_data["branchdc"]["$b"]["rateA"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))]
-    pgmax["$hour"] = [hourly_data["gen"]["$g"]["pmax"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
-    pg["$hour"] = [opf_result["solution"]["gen"]["$g"]["pg"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
 end
 
 

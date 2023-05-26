@@ -1,4 +1,4 @@
-function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, dn_demand, pv_series, wind_series, rez_pv, rez_wind, time_stamp)
+function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, average_demand, pv_series, wind_series, rez_pv, rez_wind, time_stamp)
 
     hour = time_stamp
 
@@ -10,7 +10,7 @@ function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, dn_deman
         area = hourly_data["areas"]["$area_code"]
         area_demand_grid_data = grid_data["aggregated_data"][area]["demand"]
         demand_trace = total_demand[area][hour]
-        demand_ratio = (demand_trace[1] ) / area_demand_grid_data
+        demand_ratio = demand_trace / average_demand[area]
 
         # dn_wind_trace = dn_demand["Wind"][area][hour]
         # if haskey(dn_demand["PV"], area)
