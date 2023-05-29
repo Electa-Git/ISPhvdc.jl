@@ -35,14 +35,14 @@ year = 2034
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:12)
+selected_hours = Dict{String, Any}("hour_range" => 1:48)
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # Select OPF method opf ∈ {"AC", "DC", "LPAC"}
 opf = "LPAC"
 # Assign solvers
 ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0) #, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
-dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
+dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0, "method" => 2) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
 lpac_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 
 
@@ -115,13 +115,22 @@ hours = _ISP.select_hours(year, selection = selected_hours)
 # Optionally, determine hosting capacity for all nodes
 # hosting_capacity = calculate_hosting_capacity(opf_data, total_demand_series, dn_demand_series, hours)
 
+for (c, conv) in hourly_data["convdc"]
+    conv["lossA"] = 0 
+    conv["lossB"] = 0 
+end
+
+#res = _PMACDC.run_acdcopf(hourly_data, _PM.DCPPowerModel, dc_solver, setting = s)
 # Create dictionaries for inspection of results
 pf = Dict{String, Any}(["$hour" => zeros(length(opf_data["branch"])) for hour in hours])
 pfdc = Dict{String, Any}(["$hour" => zeros(length(opf_data["branchdc"])) for hour in hours])
 pcurt = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
 pd = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
+pflex = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
 pgmax = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
 pg = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
+pf_tot = Dict{String, Any}(["$hour" => zeros(length(opf_data["branch"])) for hour in hours])
+pc_tot = Dict{String, Any}(["$hour" => zeros(length(opf_data["convdc"])) for hour in hours])
 
 # Run hourly OPF calcuations
 for hour in hours
@@ -142,19 +151,22 @@ for hour in hours
     if opf == "AC"
         opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.ACPPowerModel, ac_solver, setting = s)
     elseif opf == "LPAC"
-        opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.LPACCPowerModel, dc_solver, setting = s)
+        opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.LPACCPowerModel, lpac_solver, setting = s)
     elseif opf == "DC"
-        opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.DCPPowerModel, lpac_solver, setting = s)
+        opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.DCPPowerModel, dc_solver, setting = s)
     end
     # Write out general information
     print("Hour: ", hour, " -> ", opf_result["termination_status"], " in ", opf_result["solve_time"], " seconds.", "\n")
     # calculate and print some more information base on results
     if haskey(opf_result["solution"], "load")
+        pflex["$hour"] = [opf_result["solution"]["load"]["$l"]["pflex"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
         pd["$hour"] = [hourly_data["load"]["$l"]["pd"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
         pgmax["$hour"] = [hourly_data["gen"]["$g"]["pmax"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
         pcurt["$hour"] = [opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
         pcurt_tot = sum([opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]) * hourly_data["baseMVA"]
         pf["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))] ./ [hourly_data["branch"]["$b"]["rate_a"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branch"]))))]
+        pf_tot["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] + opf_result["solution"]["branch"]["$b"]["pt"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))]
+        pc_tot["$hour"] = [opf_result["solution"]["convdc"]["$c"]["pdc"] + opf_result["solution"]["convdc"]["$c"]["pgrid"] for c in sort(collect(parse.(Int, keys(opf_result["solution"]["convdc"]))))]
         pfdc["$hour"] = [opf_result["solution"]["branchdc"]["$b"]["pf"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))] ./ [hourly_data["branchdc"]["$b"]["rateA"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))]
         pg["$hour"] = [opf_result["solution"]["gen"]["$g"]["pg"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
     else
@@ -166,16 +178,22 @@ end
 
 ##### HERE there is some loose code for inspecting results
 
-
 # bus_loads = Dict{String, Any}([b => [] for (b, bus) in opf_data["bus"]])
 # for (l, load) in opf_data["load"]
 #     lb = load["load_bus"]
 #     push!(bus_loads["$lb"], parse(Int, l))
 # end
 
-# pcurt_avg = sum([pcurt[h] for (h, hour) in pcurt]) ./ length(pcurt)
-# pd_avg = sum([pd[h] for (h, hour) in pd]) ./ length(pd)
-# Plots.plot(pcurt_avg .* opf_data["baseMVA"])
+pcurt_tot = [sum(pcurt["$h"]) for h in hours]
+Plots.plot(pcurt_tot * opf_data["baseMVA"])
+
+ploss_tot = ([sum(pg["$h"]) for h in hours] .- ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours])) ./ ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours]) * 100
+Plots.plot(ploss_tot)
+
+
+pcurt_avg = sum([pcurt[h] for (h, hour) in pcurt]) ./ length(pcurt)
+pd_avg = sum([pd[h] for (h, hour) in pd]) ./ length(pd)
+Plots.plot(pcurt_avg .* opf_data["baseMVA"])
 
 # pmax_avg = sum([pgmax[h] for (h, hour) in pgmax]) ./ length(pgmax)
 # pg_avg = sum([pg[h] for (h, hour) in pg]) ./ length(pg)

@@ -464,8 +464,8 @@ function add_dc_converter!(data, row, acbus, dcbus_id)
         conv["rc"] = zreactor * cos(atan(xr_reactor)) / zbase
         conv["xc"] = zreactor * sin(atan(xr_reactor)) / zbase
         conv["bf"] = 0
-        conv["LossA"] = 1.1033 * 1e-3 * row[7]
-        conv["LossB"] = 0.0035 * acbus_voltage * sqrt(3)
+        conv["LossA"] = 1.1033 * 1e-3 * row[7] / data["baseMVA"]
+        conv["LossB"] = 0.0035
         conv["LossCinv"] = conv["LossCrec"] = 0.0035 / row[7] * zbase_dc
 
         push!(data["convdc"], "$conv_id" => conv)
