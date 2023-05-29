@@ -38,13 +38,13 @@ year = 2034
 selected_hours = Dict{String, Any}("hour_range" => 1:48)
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
-# Select OPF method opf ∈ {"AC", "DC", "LPAC"}
-opf = "LPAC"
+# Select OPF method opf ∈ {"AC", "DC", "LPAC", "SOCWR"}
+opf = "DC"
 # Assign solvers
-ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0) #, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
+ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
 dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0, "method" => 2) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
 lpac_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
-
+soc_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
 
 ############ END INPUT SECTION ##############################
 #############################################################
@@ -57,7 +57,7 @@ if download_data == true
 end
 
 # Optimisation settings for CbaOPF.jl
-s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
+s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 
 # Test case data
 data_folder = joinpath("data")
@@ -115,12 +115,6 @@ hours = _ISP.select_hours(year, selection = selected_hours)
 # Optionally, determine hosting capacity for all nodes
 # hosting_capacity = calculate_hosting_capacity(opf_data, total_demand_series, dn_demand_series, hours)
 
-for (c, conv) in hourly_data["convdc"]
-    conv["lossA"] = 0 
-    conv["lossB"] = 0 
-end
-
-#res = _PMACDC.run_acdcopf(hourly_data, _PM.DCPPowerModel, dc_solver, setting = s)
 # Create dictionaries for inspection of results
 pf = Dict{String, Any}(["$hour" => zeros(length(opf_data["branch"])) for hour in hours])
 pfdc = Dict{String, Any}(["$hour" => zeros(length(opf_data["branchdc"])) for hour in hours])
@@ -152,6 +146,8 @@ for hour in hours
         opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.ACPPowerModel, ac_solver, setting = s)
     elseif opf == "LPAC"
         opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.LPACCPowerModel, lpac_solver, setting = s)
+    elseif opf == "SOC"
+        opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.SOCWRPowerModel, soc_solver, setting = s)
     elseif opf == "DC"
         opf_result = CbaOPF.solve_cbaopf(hourly_data, _PM.DCPPowerModel, dc_solver, setting = s)
     end
@@ -166,7 +162,6 @@ for hour in hours
         pcurt_tot = sum([opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]) * hourly_data["baseMVA"]
         pf["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))] ./ [hourly_data["branch"]["$b"]["rate_a"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branch"]))))]
         pf_tot["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] + opf_result["solution"]["branch"]["$b"]["pt"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))]
-        pc_tot["$hour"] = [opf_result["solution"]["convdc"]["$c"]["pdc"] + opf_result["solution"]["convdc"]["$c"]["pgrid"] for c in sort(collect(parse.(Int, keys(opf_result["solution"]["convdc"]))))]
         pfdc["$hour"] = [opf_result["solution"]["branchdc"]["$b"]["pf"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))] ./ [hourly_data["branchdc"]["$b"]["rateA"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))]
         pg["$hour"] = [opf_result["solution"]["gen"]["$g"]["pg"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
     else
@@ -184,17 +179,24 @@ end
 #     push!(bus_loads["$lb"], parse(Int, l))
 # end
 
-pcurt_tot = [sum(pcurt["$h"]) for h in hours]
-Plots.plot(pcurt_tot * opf_data["baseMVA"])
+# pcurt_tot = [sum(pcurt["$h"]) for h in hours]
+# Plots.plot(pcurt_tot * opf_data["baseMVA"])
 
-ploss_tot = ([sum(pg["$h"]) for h in hours] .- ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours])) ./ ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours]) * 100
-Plots.plot(ploss_tot)
+# ploss_tot = ([sum(pg["$h"]) for h in hours] .- ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours])) ./ ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours]) * 100
+# Plots.plot(ploss_tot)
 
+# pc_loss = [sum(pc_tot["$h"]) for h in hours]
+# Plots.plot(pcurt_tot * opf_data["baseMVA"])
 
-pcurt_avg = sum([pcurt[h] for (h, hour) in pcurt]) ./ length(pcurt)
-pd_avg = sum([pd[h] for (h, hour) in pd]) ./ length(pd)
-Plots.plot(pcurt_avg .* opf_data["baseMVA"])
+# pcurt_avg = sum([pcurt[h] for (h, hour) in pcurt]) ./ length(pcurt)
+# pd_avg = sum([pd[h] for (h, hour) in pd]) ./ length(pd)
+# Plots.plot(pcurt_avg .* opf_data["baseMVA"])
 
+# for (g, gen) in opf_data["gen"]
+#     if gen["pmin"] > 0
+#         print(g, " ", gen["pmin"], "\n")
+#     end
+# end
 # pmax_avg = sum([pgmax[h] for (h, hour) in pgmax]) ./ length(pgmax)
 # pg_avg = sum([pg[h] for (h, hour) in pg]) ./ length(pg)
 # Plots.scatter(pmax_avg .- pg_avg)

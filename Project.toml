@@ -19,7 +19,7 @@ StringDistances = "88034a9c-02f8-509d-84a9-84ec65e18404"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [compat]
-CbaOPF = "0.1.1"
+CbaOPF = "0.1.2"
 CSV = "0.10.9"
 DataFrames = "1.4.4"
 Downloads = "1.6.0"
