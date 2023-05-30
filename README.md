@@ -17,6 +17,7 @@ There is an example script located under "scripts/NEM_2050.jl" where you can man
     - Data only needs to be downloaded in the first run. .gitignore takes care it is not pushed to the repository.
 - Selecting the (half) hours to run the calculations
 - Selecting the OPF formulation, e.g. AC OPF, DC OPF or LPAC OPF 
+- Select if parallel branches should be merged to a single branch
 - Assigning solvers
 
 The rest of the functions you don't necesserily need to manipulate. Once the OPFs are performed, there are some sample code snippets to analyse the results in more detail.

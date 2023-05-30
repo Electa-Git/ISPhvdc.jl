@@ -414,7 +414,7 @@ function generator_data(tbus, rez, gen_id, type, basemva)
     gen["gen_bus"] = tbus
     gen["index"] = gen_id
     gen["fuel"] = type
-    gen["cost"] = [0.0 0.0] # check for correct costs later
+    gen["cost"] = [1.0 0.0] # check for correct costs later
     gen["gen_status"] = 1
     gen["type"] = type
 
@@ -504,6 +504,43 @@ function add_dc_bus!(data, row, dcbus)
     push!(data["busdc"], "$dcbus" => busdc)
 end
 
+function fix_data!(data)
+
+    # Find isolated buses and put their demand zero
+    bus_arcs = Dict{String, Any}([b => [] for (b, bus) in data["bus"]])
+    for (b, branch) in data["branch"]
+        fbus = branch["f_bus"]
+        tbus = branch["t_bus"]
+        if haskey(bus_arcs, "$fbus")
+            push!(bus_arcs["$fbus"], parse(Int, b))
+        end
+        if haskey(bus_arcs, "$tbus")
+            push!(bus_arcs["$tbus"], parse(Int, b))
+        end
+        branch["tap"] = 1.0
+        branch["shift"] = 0.0
+    end
+    for (c, conv) in data["convdc"]
+        cbus = conv["busac_i"]
+        push!(bus_arcs["$cbus"], parse(Int, c))
+    end
+
+    for (l, load) in data["load"]
+        load_bus = load["load_bus"]
+        if isempty(bus_arcs["$load_bus"])
+            load["pd"] = 0.0
+            load["qd"] = 0.0
+        end
+    end
+
+    # generator data comming from matlab model seems two orders of magnitude too small
+    for (g, gen) in data["gen"] 
+        gen["cost"] = gen["cost"] .* data["baseMVA"]
+    end
+
+    return data
+end
+
 function fix_hvdc_data_issues!(data; no_bass = false, no_terra = false, no_murray = false)
 
     if no_bass == false
@@ -539,6 +576,42 @@ function add_area_dict!(data_nem)
     data_nem["areas"]["5"] = "TAS"
 end
 
+
+function merge_parallel_lines(data)
+    ft_buses = Dict{String, Any}()
+    for (b, branch) in data["branch"]
+        ftbus = join([branch["f_bus"], "-", branch["t_bus"]])
+        tfbus = join([branch["t_bus"], "-", branch["f_bus"]])
+        if !haskey(ft_buses, ftbus) && !haskey(ft_buses, tfbus)
+            push!(ft_buses, ftbus => b)
+        elseif haskey(ft_buses, ftbus)
+            branch_id = ft_buses[ftbus]
+            merge_branches!(data, branch_id, branch)
+            delete!(data["branch"], b)
+        elseif haskey(ft_buses, tfbus)
+            branch_id = ft_buses[tfbus]
+            merge_branches!(data, branch_id, branch)
+            delete!(data["branch"], b)
+        end
+    end
+    
+    return data
+end
+
+function merge_branches!(data, b_idx, parallel_br)
+    data["branch"][b_idx]["rate_a"] = data["branch"][b_idx]["rate_a"] + parallel_br["rate_a"]
+    data["branch"][b_idx]["rate_b"] = data["branch"][b_idx]["rate_b"] + parallel_br["rate_b"]
+    data["branch"][b_idx]["rate_c"] = data["branch"][b_idx]["rate_c"] + parallel_br["rate_c"]
+    if haskey(data["branch"][b_idx], "c_rating") && haskey(parallel_br, "c_rating")
+        data["branch"][b_idx]["c_rating"] = data["branch"][b_idx]["c_rating"] + parallel_br["c_rating"]
+    end
+    data["branch"][b_idx]["br_r"] = (data["branch"][b_idx]["br_r"] * parallel_br["br_r"]) / (data["branch"][b_idx]["br_r"] + parallel_br["br_r"])
+    data["branch"][b_idx]["br_x"] = (data["branch"][b_idx]["br_x"] * parallel_br["br_x"]) / (data["branch"][b_idx]["br_x"] + parallel_br["br_x"])
+    data["branch"][b_idx]["b_fr"] = data["branch"][b_idx]["b_fr"] + parallel_br["b_fr"]
+    data["branch"][b_idx]["b_to"] = data["branch"][b_idx]["b_to"] + parallel_br["b_to"]
+    data["branch"][b_idx]["g_fr"] = data["branch"][b_idx]["g_fr"] + parallel_br["g_fr"]
+    data["branch"][b_idx]["g_to"] = data["branch"][b_idx]["g_to"] + parallel_br["g_to"]
+end
 
 
 

@@ -38,8 +38,10 @@ year = 2034
 selected_hours = Dict{String, Any}("hour_range" => 1:48)
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
-# Select OPF method opf ∈ {"AC", "DC", "LPAC", "SOCWR"}
-opf = "DC"
+# Select OPF method opf ∈ {"AC", "DC", "LPAC", "SOC"}
+opf = "SOC"
+# State if circiuts and parallel lines should be merged:
+merge_parallel_lines = true
 # Assign solvers
 ac_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
 dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0, "method" => 2) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
@@ -61,7 +63,7 @@ s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 
 # Test case data
 data_folder = joinpath("data")
-data_file_hvdc = "nem_2300bus_thermal_limits_gen_costs_hvdc.m"
+data_file_hvdc = "nem_2300bus_thermal_limits_gen_costs_hvdc_v1.m"
 
 # Get grid data from the NEM 2000 bus model m-file 
 data_hvdc = _PM.parse_file(data_folder*"/"*data_file_hvdc)
@@ -103,6 +105,13 @@ _ISP.add_rez_and_connections!(data_hvdc, rez_connections, rez_capacities)
 opf_data = deepcopy(data_hvdc)
 # Aggregate demand data per state to modulate with hourly traces
 _ISP.aggregate_demand_data!(opf_data)
+
+# fix data issues, e.g. putting generation cost in € / pu:
+_ISP.fix_data!(opf_data)
+
+if merge_parallel_lines == true
+    _ISP.merge_parallel_lines(opf_data)
+end
 
 # Create empty arrays
 total_demand = []
@@ -153,7 +162,7 @@ for hour in hours
     end
     # Write out general information
     print("Hour: ", hour, " -> ", opf_result["termination_status"], " in ", opf_result["solve_time"], " seconds.", "\n")
-    # calculate and print some more information base on results
+    # calculate and print some more information based on results
     if haskey(opf_result["solution"], "load")
         pflex["$hour"] = [opf_result["solution"]["load"]["$l"]["pflex"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
         pd["$hour"] = [hourly_data["load"]["$l"]["pd"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
@@ -162,6 +171,7 @@ for hour in hours
         pcurt_tot = sum([opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]) * hourly_data["baseMVA"]
         pf["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))] ./ [hourly_data["branch"]["$b"]["rate_a"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branch"]))))]
         pf_tot["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] + opf_result["solution"]["branch"]["$b"]["pt"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))]
+        pc_tot["$hour"] = [opf_result["solution"]["convdc"]["$c"]["pgrid"] + opf_result["solution"]["convdc"]["$c"]["pdc"] for c in sort(collect(parse.(Int, keys(opf_result["solution"]["convdc"]))))]
         pfdc["$hour"] = [opf_result["solution"]["branchdc"]["$b"]["pf"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))] ./ [hourly_data["branchdc"]["$b"]["rateA"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))]
         pg["$hour"] = [opf_result["solution"]["gen"]["$g"]["pg"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
     else
@@ -183,10 +193,15 @@ end
 # Plots.plot(pcurt_tot * opf_data["baseMVA"])
 
 # ploss_tot = ([sum(pg["$h"]) for h in hours] .- ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours])) ./ ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours]) * 100
-# Plots.plot(ploss_tot)
+# p2 = Plots.plot(ploss_tot)
 
-# pc_loss = [sum(pc_tot["$h"]) for h in hours]
-# Plots.plot(pcurt_tot * opf_data["baseMVA"])
+# p_loss_mwh = ([sum(pg["$h"]) for h in hours] .- ([sum(pd["$h"]) for h in hours] - [sum(pcurt["$h"]) for h in hours])) 
+# pl_loss_mwh = [sum(pf_tot["$h"]) for h in hours]
+# pc_loss_mwh = [sum(pc_tot["$h"]) for h in hours]
+# p1 = Plots.plot(p_loss_mwh * opf_data["baseMVA"])
+# p1 = Plots.plot!(pl_loss_mwh * opf_data["baseMVA"])
+# p1 = Plots.plot!(pc_loss_mwh * opf_data["baseMVA"])
+# p1 = Plots.plot!((pc_loss_mwh .+ pl_loss_mwh) * opf_data["baseMVA"])
 
 # pcurt_avg = sum([pcurt[h] for (h, hour) in pcurt]) ./ length(pcurt)
 # pd_avg = sum([pd[h] for (h, hour) in pd]) ./ length(pd)

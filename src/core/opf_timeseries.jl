@@ -60,38 +60,6 @@ function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, average_
     return hourly_data
 end
 
-function fix_data!(data)
-
-    # Find isolated buses and put their demand zero
-    bus_arcs = Dict{String, Any}([b => [] for (b, bus) in data["bus"]])
-    for (b, branch) in opf_data["branch"]
-        fbus = branch["f_bus"]
-        tbus = branch["t_bus"]
-        if haskey(bus_arcs, "$fbus")
-            push!(bus_arcs["$fbus"], parse(Int, b))
-        end
-        if haskey(bus_arcs, "$tbus")
-            push!(bus_arcs["$tbus"], parse(Int, b))
-        end
-    end
-    for (c, conv) in opf_data["convdc"]
-        cbus = conv["busac_i"]
-        push!(bus_arcs["$cbus"], parse(Int, c))
-    end
-
-    print(bus_arcs["2013"])
-
-    for (l, load) in data["load"]
-        load_bus = load["load_bus"]
-        if isempty(bus_arcs["$load_bus"])
-            load["pd"] = 0.0
-            load["qd"] = 0.0
-        end
-    end
-
-    return data
-end
-
 function aggregate_demand_data!(grid_data)
 
     grid_data["aggregated_data"] = Dict{String, Any}([area => Dict{String, Any}("demand" => 0) for (key, area) in grid_data["areas"]])
