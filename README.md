@@ -8,6 +8,18 @@ You can clone the package and add it to your julia environment using
 ```julia
 ] develop https://github.com/hakanergun/ISPhvdc.jl.git
 ```
+
+You can add all packages required packages, such as CbaOPF, PowerModelsACDC, PowerModels etc. using
+
+```julia
+] add CbaOPF
+```
+
+Make sure that your Julia registry is up to date. To detect and download the latest version of the packages use
+
+```julia
+] update
+```
 ## Examples:
 
 There is an example script located under "scripts/NEM_2050.jl" where you can manipulate the input section for
