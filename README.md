@@ -9,7 +9,7 @@ You can clone the package and add it to your julia environment using
 ] develop https://github.com/hakanergun/ISPhvdc.jl.git
 ```
 
-You can add all packages required packages, such as CbaOPF, PowerModelsACDC, PowerModels etc. using
+You can add all required packages, such as CbaOPF, PowerModelsACDC, PowerModels etc. using
 
 ```julia
 ] add CbaOPF
