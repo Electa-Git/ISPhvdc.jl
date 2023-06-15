@@ -29,7 +29,7 @@ const _ISP = ISPhvdc
 
 # SELECT SCENARIO
 # scenario ∈ {"2022 ISP Hydrogen Superpower", "2022 ISP Progressive Change", "2022 ISP Slow Change", "2022 ISP Step Change"}
-scenario = "2022 ISP Hydrogen Superpower"
+scenario = "2022 ISP Step Change"
 # select climate year ∈ [2024:2051]
 year = 2034
 # You can choose select certain hours or a full year for the analysis: 
