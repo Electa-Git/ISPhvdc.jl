@@ -35,11 +35,11 @@ year = 2034
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:48)
+selected_hours = Dict{String, Any}("hour_range" => 1:336)
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # Select OPF method opf ∈ {"AC", "DC", "LPAC", "SOC"}
-opf = "SOC"
+opf = "DC"
 # State if circiuts and parallel lines should be merged:
 merge_parallel_lines = true
 # Assign solvers
@@ -118,6 +118,7 @@ total_demand = []
 total_gen_capacity = []
 # Make copy of grid data
 hourly_data = deepcopy(opf_data)
+
 # Select hours
 hours = _ISP.select_hours(year, selection = selected_hours)
 
@@ -125,15 +126,17 @@ hours = _ISP.select_hours(year, selection = selected_hours)
 # hosting_capacity = calculate_hosting_capacity(opf_data, total_demand_series, dn_demand_series, hours)
 
 # Create dictionaries for inspection of results
-pf = Dict{String, Any}(["$hour" => zeros(length(opf_data["branch"])) for hour in hours])
+pf = Dict{String, Any}(["$hour" => zeros(1, maximum(parse.(Int, collect(keys(hourly_data["branch"]))))) for hour in hours])
+pf_mw = Dict{String, Any}(["$hour" => zeros(length(opf_data["branch"])) for hour in hours])
 pfdc = Dict{String, Any}(["$hour" => zeros(length(opf_data["branchdc"])) for hour in hours])
-pcurt = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
+pcurt = Dict{String, Any}(["$hour" => zeros(1, maximum(parse.(Int, collect(keys(hourly_data["branch"]))))) for hour in hours])
 pd = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
 pflex = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
 pgmax = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
 pg = Dict{String, Any}(["$hour" => zeros(length(opf_data["load"])) for hour in hours])
 pf_tot = Dict{String, Any}(["$hour" => zeros(length(opf_data["branch"])) for hour in hours])
 pc_tot = Dict{String, Any}(["$hour" => zeros(length(opf_data["convdc"])) for hour in hours])
+
 
 # Run hourly OPF calcuations
 for hour in hours
@@ -167,9 +170,14 @@ for hour in hours
         pflex["$hour"] = [opf_result["solution"]["load"]["$l"]["pflex"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
         pd["$hour"] = [hourly_data["load"]["$l"]["pd"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
         pgmax["$hour"] = [hourly_data["gen"]["$g"]["pmax"] for g in sort(parse.(Int, collect(keys(opf_result["solution"]["gen"]))))]
-        pcurt["$hour"] = [opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]
+        for l in sort(collect(parse.(Int, keys(opf_result["solution"]["load"]))))
+            pcurt["$hour"][1, l] = opf_result["solution"]["load"]["$l"]["pcurt"] 
+        end
         pcurt_tot = sum([opf_result["solution"]["load"]["$l"]["pcurt"] for l in sort(parse.(Int, collect(keys(opf_result["solution"]["load"]))))]) * hourly_data["baseMVA"]
-        pf["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))] ./ [hourly_data["branch"]["$b"]["rate_a"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branch"]))))]
+        for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))
+            pf["$hour"][1, b] = opf_result["solution"]["branch"]["$b"]["pf"] ./ hourly_data["branch"]["$b"]["rate_a"]
+        end
+        pf_mw["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))]
         pf_tot["$hour"] = [opf_result["solution"]["branch"]["$b"]["pf"] + opf_result["solution"]["branch"]["$b"]["pt"] for b in sort(collect(parse.(Int, keys(opf_result["solution"]["branch"]))))]
         pc_tot["$hour"] = [opf_result["solution"]["convdc"]["$c"]["pgrid"] + opf_result["solution"]["convdc"]["$c"]["pdc"] for c in sort(collect(parse.(Int, keys(opf_result["solution"]["convdc"]))))]
         pfdc["$hour"] = [opf_result["solution"]["branchdc"]["$b"]["pf"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))] ./ [hourly_data["branchdc"]["$b"]["rateA"] for b in sort(parse.(Int, collect(keys(opf_result["solution"]["branchdc"]))))]
@@ -180,7 +188,25 @@ for hour in hours
     print("Total curtailed load = ", pcurt_tot, " MW, ", pcurt_tot / pdh_max * 100,"%", "\n")
 end
 
+for hour in hours
+    print(hour, " ",sum(pcurt["$hour"]), "\n")
+end
 
+# max_loading = zeros(1, maximum(parse.(Int, collect(keys(hourly_data["branch"])))))
+# for (b,  branch) in hourly_data["branch"]
+#     max_loading[1, parse(Int, b)] = maximum([pf["$idx"][parse(Int, b)] for idx in hours])
+# end
+# a = findall(max_loading .>= 0.9)
+# b = [a[i][2] for i in 1:length(a)]
+# print(b', "\n")
+
+# load = 66
+# load_bus = hourly_data["load"]["$load"]["load_bus"]
+# for (b, branch) in hourly_data["branch"]
+#     if branch["f_bus"] == load_bus || branch["t_bus"] == load_bus
+#         print(b, " ", branch["rate_a"], " ", hourly_data["load"]["$load"]["pd"],  "\n")
+#     end
+# end
 ##### HERE there is some loose code for inspecting results
 
 # bus_loads = Dict{String, Any}([b => [] for (b, bus) in opf_data["bus"]])
@@ -249,10 +275,11 @@ end
 # Plots.plot(total_demand .* data_hvdc["baseMVA"], label = "Total demand in MW")
 # Plots.plot!(total_gen_capacity .* data_hvdc["baseMVA"], label = "Total available generation in MW")
 # Plots.plot((total_demand .- total_gen_capacity).* data_hvdc["baseMVA"] , label = "ΔP in MW")
-
+# load = 268
+# load_bus = opf_data["load"]["$load"]["load_bus"]
 # for (b, branch) in opf_data["branch"]
-#     if branch["f_bus"] == 2013 || branch["t_bus"] == 2013 
-#         print(b, " ", branch["rate_a"], " fbus = ", branch["f_bus"], " tbus = ", branch["t_bus"], "\n")
+#     if branch["f_bus"] == load_bus || branch["t_bus"] == load_bus
+#         print(b, " rate = ", branch["rate_a"], " fbus = ", branch["f_bus"], " tbus = ", branch["t_bus"], " load = ", opf_data["load"]["$load"]["pd"],  "\n")
 #     end
 # end
 # StatsPlots.boxplot!(hosting_capacity["1402"]')
@@ -287,3 +314,27 @@ end
 # pf_res = [result["solution"]["branch"]["$b"]["pf"]/data_hvdc["branch"]["$b"]["rate_a"] for b in sort(collect(keys(result["solution"]["branch"])))]
 # Plots.plot(pf_orig, pf_res, seriestype=:scatter, markersize = 2)
 # Plots.plot!(0:1, 0:1)
+
+
+
+# for idx in [16 30 33 71 90 269 800 1053 450 483 636 1317 1315 721 1057]
+#     hourly_data["branch"]["$idx"]["rate_a"] = hourly_data["branch"]["$idx"]["rate_a"] * 2
+# end
+
+# for idx in [1028 1029 1194]
+#     hourly_data["branch"]["$idx"]["rate_a"] = hourly_data["branch"]["$idx"]["rate_a"] * 2
+# end
+
+# problematic_branches = [ 6 12  13  16  18  19  21  24  30  33  39 43  47  53  55 62  71  72 77 88  90 91 106 107 155 159 160 161 174  179 197  199  200  251  252  269  292  318 338 351 352 375 450  464  482  483  499  522  524  526 591 636 721  800 803 822  910  936 976 992 998  1017  1019  1028  1029 1046  1053  1057  1058  1110  1194 1271 1274 1295  1310  1315  1317  1322  1333  1334 1642 2285  3150 3157]
+# really_problematic_branches = [16 18 19 21 24 30 33 43 47 53 55 63 71 179 269 351 374 450 482 483 522 1028 1029 1194 1310 1315 1317 3150] 
+# really_really_problematic_branches = [21 1029 3150] 
+# for b in problematic_branches
+#     hourly_data["branch"]["$b"]["rate_a"] = hourly_data["branch"]["$b"]["rate_a"] * 1.5
+# end
+
+# for b in really_problematic_branches
+#     hourly_data["branch"]["$b"]["rate_a"] = hourly_data["branch"]["$b"]["rate_a"] * 1.5
+# end
+# for b in really_really_problematic_branches
+#     hourly_data["branch"]["$b"]["rate_a"] = hourly_data["branch"]["$b"]["rate_a"] * 1.5
+# end
