@@ -19,7 +19,7 @@ const _EF = ExcelFiles
 import StringDistances
 const _SD = StringDistances
 import Downloads
-import InfoZIP
+# import InfoZIP
 import Plots
 import PlotlyJS
 import StatsPlots
@@ -37,6 +37,8 @@ include("core/hosting_capacity.jl")
 include("core/opf_timeseries.jl")
 include("core/batch_calculations.jl")
 include("core/process_results.jl")
+include("core/tnep_acdc.jl")
+
 
 
 end # module ISPhvdc

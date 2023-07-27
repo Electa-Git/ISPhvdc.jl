@@ -1,38 +1,38 @@
-function download_isp_data()
-    # Download ISP input workbook
-    mkdir(joinpath("data", "inputs"))
-    filename_inputs = joinpath("data", "Inputs", "Inputs assumptions and scenarios workbook.xlsx") 
-    url_inputs = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/inputs-assumptions-and-scenarios-workbook.xlsx?la=en"
-    Downloads.download(url_inputs, filename_inputs)
+# function download_isp_data()
+#     # Download ISP input workbook
+#     mkdir(joinpath("data", "inputs"))
+#     filename_inputs = joinpath("data", "Inputs", "Inputs assumptions and scenarios workbook.xlsx") 
+#     url_inputs = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/inputs-assumptions-and-scenarios-workbook.xlsx?la=en"
+#     Downloads.download(url_inputs, filename_inputs)
 
 
-    filename_solar = joinpath("data", "2022-isp-solar-traces.zip") 
-    url_solar = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-solar-traces.zip?la=en"
-    Downloads.download(url_solar, filename_solar)
-    InfoZIP.unzip(filename_solar, "data")
-    rm(filename_solar)
+#     filename_solar = joinpath("data", "2022-isp-solar-traces.zip") 
+#     url_solar = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-solar-traces.zip?la=en"
+#     Downloads.download(url_solar, filename_solar)
+#     InfoZIP.unzip(filename_solar, "data")
+#     rm(filename_solar)
 
-    filename_wind = joinpath("data", "2022 ISP Wind traces.zip") 
-    url_wind = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-wind-traces.zip?la=en"
-    Downloads.download(url_wind, filename_wind)
-    InfoZIP.unzip(filename_wind, "data")
-    rm(filename_wind)
+#     filename_wind = joinpath("data", "2022 ISP Wind traces.zip") 
+#     url_wind = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-wind-traces.zip?la=en"
+#     Downloads.download(url_wind, filename_wind)
+#     InfoZIP.unzip(filename_wind, "data")
+#     rm(filename_wind)
 
-    filename_generation = joinpath("data", "Generation outlook.zip") 
-    url_generation = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/generation-outlook.zip?la=en"
-    Downloads.download(url_generation, filename_generation)
-    mkdir(joinpath("data", "Generation outlook"))
-    InfoZIP.unzip(filename_generation, "data/Generation outlook")
-    rm(filename_generation)
+#     filename_generation = joinpath("data", "Generation outlook.zip") 
+#     url_generation = "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/generation-outlook.zip?la=en"
+#     Downloads.download(url_generation, filename_generation)
+#     mkdir(joinpath("data", "Generation outlook"))
+#     InfoZIP.unzip(filename_generation, "data/Generation outlook")
+#     rm(filename_generation)
     
-    filename_model= joinpath("data", "2022 ISP model.zip") 
-    url_model= "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-model.zip?la=en"
-    Downloads.download(url_model, filename_model)
-    InfoZIP.unzip(filename_model, "data")
-    rm(filename_model)
-end
+#     filename_model= joinpath("data", "2022 ISP model.zip") 
+#     url_model= "https://aemo.com.au/-/media/files/major-publications/isp/2022/2022-documents/2022-isp-model.zip?la=en"
+#     Downloads.download(url_model, filename_model)
+#     InfoZIP.unzip(filename_model, "data")
+#     rm(filename_model)
+# end
 
-function get_demand_data(scenario, year)
+function get_demand_data(scenario, year; verbose = true)
     data_folder = joinpath("data", "2022 Final ISP Model", scenario, "Traces", "demand")
     all_demand_files = readdir(data_folder)
 
@@ -41,7 +41,7 @@ function get_demand_data(scenario, year)
 
     for file in all_demand_files
         region = file[1:(collect(findfirst("_", file)).-1)[1]]
-        print("Reading demand trace for ", region, "\n")
+        verbose ? print("Reading demand trace for ", region, "\n") : nothing
         demand_region = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
         demand[region] = demand_region[demand_region[!, :Year] .== year, :]
     end
@@ -60,7 +60,7 @@ function get_demand_data(scenario, year)
 end
 
 
-function get_dn_demand_data(scenario, year)
+function get_dn_demand_data(scenario, year; verbose = true)
     data_folder = joinpath("data", "2022 Final ISP Model", scenario, "Traces", "load_subtractor")
     all_demand_files = readdir(data_folder)
 
@@ -69,7 +69,7 @@ function get_dn_demand_data(scenario, year)
     for file in all_demand_files
         region = file[(collect(findall("_", file)[2])[1] + 1) : (collect(findall("_", file)[3])[1] - 1)]
         type =  file[(collect(findall("_", file)[1])[1] + 1) : (collect(findall("_", file)[2])[1] - 1)]
-        print("Reading ", type, " load subtractor trace for ", region, "\n")
+        verbose ? print("Reading ", type, " load subtractor trace for ", region, "\n") : nothing
         demand_region = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
         demand[type][region] = demand_region[demand_region[!, :Year] .== year, :]
     end
@@ -166,15 +166,15 @@ function remove_extra_info!(gen_info)
     return gen_info
 end
 
-function get_res_timeseries(year)
-    pv = get_pv_timeseries(year)
-    wind = get_wind_timeseries(year)
+function get_res_timeseries(year; verbose = true)
+    pv = get_pv_timeseries(year; verbose = verbose)
+    wind = get_wind_timeseries(year; verbose = verbose)
 
     return pv, wind
 end
 
 
-function get_pv_timeseries(year)
+function get_pv_timeseries(year; verbose = true)
     data_folder = joinpath("data", "solar")
     all_files = readdir(data_folder)
 
@@ -191,8 +191,10 @@ function get_pv_timeseries(year)
         elseif !isempty(findall("PEG", file))
             plant = file[1:(findall("PEG", file)[1][1] - 2)]
         end
-        print(file)
-        print("Reading PV trace for ", plant, "\n")
+        if verbose
+            print(file)
+            print("Reading PV trace for ", plant, "\n")
+        end
         pv_plant = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
         pv[plant] = pv_plant[pv_plant[!, :Year] .== year, :]
     end
@@ -200,7 +202,7 @@ function get_pv_timeseries(year)
     return pv
 end
 
-function get_wind_timeseries(year)
+function get_wind_timeseries(year; verbose = true)
     data_folder = joinpath("data", "wind")
     all_files = readdir(data_folder)
 
@@ -208,7 +210,7 @@ function get_wind_timeseries(year)
 
     for file in all_files
         plant = file[1:(findall("Ref", file)[1][1] - 2)]
-        print("Reading Wind trace for ", plant, "\n")
+        verbose ? print("Reading Wind trace for ", plant, "\n") : nothing
         wind_plant = _DF.DataFrame(CSV.File(joinpath(data_folder, file)))
         wind[plant] = wind_plant[wind_plant[!, :Year] .== year, :]
     end
@@ -217,7 +219,7 @@ function get_wind_timeseries(year)
 end
 
 
-function aggregate_res_timeseries(res_ts, generator_info, type::String)
+function aggregate_res_timeseries(res_ts, generator_info, type::String; verbose = true)
 
     aggregated_res = Dict{String, Any}("NSW" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0), "VIC" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0), 
     "QLD" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0), "SA" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0), "TAS" => Dict{String, Any}("values" => _DF.DataFrame(), "count" => 0))
@@ -231,7 +233,7 @@ function aggregate_res_timeseries(res_ts, generator_info, type::String)
             best_fit = findmax(similarity)[2][1]
             name =  generator_info[ids[best_fit], 1]
             state = generator_info[ids[best_fit], 3]
-            print(plant, " -> ", name, "\n")
+            verbose ? print(plant, " -> ", name, "\n") : nothing
             count[state] = count[state] + 1
             if isempty(res_series[state])
                 res_series[state] = zeros(1, 48 * _DF.nrow(profile))
@@ -274,7 +276,7 @@ function make_rez_time_series(res_ts)
     return ts
 end
 
-function add_rez_and_connections!(data, extensions, rez)
+function add_rez_and_connections!(data, extensions, rez; hvdc = true)
 
     for row in eachrow(extensions["ac"])
         if row[1] !== "REZ ID"
@@ -289,34 +291,36 @@ function add_rez_and_connections!(data, extensions, rez)
         end 
     end
 
-    for row in eachrow(extensions["dc"])
-        if row[1] !== "REZ ID"
-            fbus = row[11]
-            if row[12] !== 0
-                tbus = row[12]             
-            else
-                tbus = maximum(sort(parse.(Int, keys(data["bus"])))) + 1
-                add_ac_bus!(data, row, tbus)
-            end
-            fbusdc = maximum(sort(parse.(Int, keys(data["busdc"])))) + 1
-            tbusdc = maximum(sort(parse.(Int, keys(data["busdc"])))) + 2
-            add_dc_bus!(data, row, fbusdc)
-            add_dc_bus!(data, row, tbusdc)
-            if row[1] !== "MARINUS"
-                add_dc_converter!(data, row, fbus, fbusdc; rez_connection = true)
-                add_dc_converter!(data, row, tbus, tbusdc; rez_connection = true)
-                add_dc_branch!(data, row, fbusdc, tbusdc; rez_connection = true)
-            else
-                add_dc_converter!(data, row, fbus, fbusdc; rez_connection = false)
-                add_dc_converter!(data, row, tbus, tbusdc; rez_connection = false)
-                add_dc_branch!(data, row, fbusdc, tbusdc; rez_connection = false)
-            end
-            if row[1] !== "MARINUS"
-                add_generator!(data, row, tbus, rez)
-            end
-        end 
+    if hvdc == true
+        for row in eachrow(extensions["dc"])
+            if row[1] !== "REZ ID"
+                fbus = row[11]
+                if row[12] !== 0
+                    tbus = row[12]             
+                else
+                    tbus = maximum(sort(parse.(Int, keys(data["bus"])))) + 1
+                    add_ac_bus!(data, row, tbus)
+                end
+                fbusdc = maximum(sort(parse.(Int, keys(data["busdc"])))) + 1
+                tbusdc = maximum(sort(parse.(Int, keys(data["busdc"])))) + 2
+                add_dc_bus!(data, row, fbusdc)
+                add_dc_bus!(data, row, tbusdc)
+                if row[1] !== "MARINUS"
+                    add_dc_converter!(data, row, fbus, fbusdc; rez_connection = true)
+                    add_dc_converter!(data, row, tbus, tbusdc; rez_connection = true)
+                    add_dc_branch!(data, row, fbusdc, tbusdc; rez_connection = true)
+                else
+                    add_dc_converter!(data, row, fbus, fbusdc; rez_connection = false)
+                    add_dc_converter!(data, row, tbus, tbusdc; rez_connection = false)
+                    add_dc_branch!(data, row, fbusdc, tbusdc; rez_connection = false)
+                end
+                if row[1] !== "MARINUS"
+                    add_generator!(data, row, tbus, rez)
+                end
+            end 
+        end
     end
-
+    
     return data
 end
 
@@ -523,7 +527,7 @@ function add_dc_bus!(data, row, dcbus)
     push!(data["busdc"], "$dcbus" => busdc)
 end
 
-function fix_data!(data)
+function fix_data!(data; hvdc = true)
 
     # Find isolated buses and put their demand zero
     bus_arcs = Dict{String, Any}([b => [] for (b, bus) in data["bus"]])
@@ -539,9 +543,12 @@ function fix_data!(data)
         branch["tap"] = 1.0
         branch["shift"] = 0.0
     end
-    for (c, conv) in data["convdc"]
-        cbus = conv["busac_i"]
-        push!(bus_arcs["$cbus"], parse(Int, c))
+
+    if hvdc == true
+        for (c, conv) in data["convdc"]
+            cbus = conv["busac_i"]
+            push!(bus_arcs["$cbus"], parse(Int, c))
+        end
     end
 
     for (l, load) in data["load"]

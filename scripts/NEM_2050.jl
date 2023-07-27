@@ -4,7 +4,7 @@ using ISPhvdc
 using PowerModels
 using PowerModelsACDC
 using CbaOPF
-using NEM_2300bus
+# using NEM_2300bus
 using JuMP
 using Ipopt
 using Plots
@@ -20,7 +20,7 @@ using Statistics
 # Create short hands for the most important ones
 const _PM = PowerModels
 const _PMACDC = PowerModelsACDC
-const _SNEM = NEM_2300bus
+# const _SNEM = NEM_2300bus
 const _PP = PowerPlots
 const _SB = StatsBase
 const _ISP = ISPhvdc
@@ -48,6 +48,8 @@ dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0,
 lpac_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 soc_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
 
+ENV["GUROBI_HOME"]="/Library/gurobi902/mac64"
+ENV["GRB_LICENSE_FILE"]="/Users/hei06j/gurobi/gurobi.lic"
 ############ END INPUT SECTION ##############################
 #############################################################
 

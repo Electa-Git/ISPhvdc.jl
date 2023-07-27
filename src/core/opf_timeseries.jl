@@ -1,4 +1,44 @@
-function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, average_demand, pv_series, wind_series, rez_pv, rez_wind, time_stamp)
+function prepare_mn_opf_data!(opf_mn_data, grid_data, demand_series, pv_series, wind_series, hours)
+    for hour in hours
+        opf_mn_data["nw"]["$hour"]["per_unit"] = true
+
+        for (l, load) in opf_mn_data["nw"]["$hour"]["load"]
+            load_bus = load["load_bus"]
+            area_code = opf_mn_data["nw"]["$hour"]["bus"]["$load_bus"]["area"]
+            area = opf_mn_data["nw"]["$hour"]["areas"]["$area_code"]
+            demand_ratio = demand_series[area][hour]
+
+            if load["pd"] >= 0 
+                load["pd"] = grid_data["load"][l]["pd"] * demand_ratio * 0.9
+                load["qd"] = grid_data["load"][l]["qd"] * demand_ratio * 0.9
+            end
+        end
+
+        for (g, gen) in opf_mn_data["nw"]["$hour"]["gen"]
+            trace = 1
+            gen_bus = gen["gen_bus"]
+            area_code = opf_mn_data["nw"]["$hour"]["bus"]["$gen_bus"]["area"]
+            area = opf_mn_data["nw"]["$hour"]["areas"]["$area_code"]
+            if gen["type"] == "Wind"
+                trace = wind_series[area][hour] * 1.1
+            elseif gen["type"] == "Solar"
+                if !isempty(pv_series[area])
+                    trace = pv_series[area][hour] * 1.1
+                end
+            end
+            gen["pmax"] = grid_data["gen"][g]["pmax"] * trace
+        end
+
+        if haskey(opf_mn_data["nw"]["$hour"], "aggregated_data")
+            delete!(opf_mn_data["nw"]["$hour"], "aggregated_data")
+        end
+    end
+    
+    return opf_mn_data
+end
+
+
+function prepare_hourly_opf_data!(hourly_data, grid_data, demand_series, pv_series, wind_series, rez_pv, rez_wind, time_stamp)
 
     hour = time_stamp
 
@@ -8,8 +48,7 @@ function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, average_
         load_bus = load["load_bus"]
         area_code = hourly_data["bus"]["$load_bus"]["area"]
         area = hourly_data["areas"]["$area_code"]
-        demand_trace = total_demand[area][hour]
-        demand_ratio = demand_trace / average_demand[area]
+        demand_ratio = demand_series[area][hour]
 
         if load["pd"] >= 0 
             load["pd"] = grid_data["load"][l]["pd"] * demand_ratio
@@ -51,6 +90,7 @@ function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, average_
     
     return hourly_data
 end
+
 
 function aggregate_demand_data!(grid_data)
 
