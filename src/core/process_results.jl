@@ -133,8 +133,8 @@ function get_and_plot_objective_value(fmin, scenario, year, hours)
         end
     end
 
-    p1 = Plots.plot(fmin, o_no_dc', marker = :diamond, xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "without HVDC contribution", legend_position = :outertopright)
-    Plots.plot!(p1, fmin, o_dc', marker = :diamond,  xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "with HVDC contribution", legend_position = :outertopright)
+    p1 = Plots.plot(fmin, o_no_dc', marker = :diamond, xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "without HVDC contribution")
+    Plots.plot!(p1, fmin, o_dc', marker = :diamond,  xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "with HVDC contribution")
     plot_filename = joinpath("results", scenario, year, hours, "objective_comparison.pdf")
     Plots.savefig(p1, plot_filename)
 
@@ -275,22 +275,21 @@ function plot_load_shedding(input_data, fmin, scenario, year, hours)
 
     print("Plotting", "\n")
 
-    legend = repeat(["NSW + VIC", "QLD", "SA", "TAS"], inner = length(hour_ids))
+    legend = repeat(["NSW + VIC w/o dc", "QLD w/o dc", "SA w/o dc", "TAS w/o dc"], inner = length(hour_ids))
     x_values = repeat(["$(lpad(idx, 2, "0"))" for idx in 1:length(hour_ids)], outer = 4)
     p_no_dc = StatsPlots.groupedbar(
         x_values, ls_no_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["demand_shedding_without_dc_f",fmin,".pdf"]))
-    StatsPlots.savefig(p_no_dc, plot_filename)
 
-    p_dc = StatsPlots.groupedbar(
+    legend = repeat(["NSW + VIC with dc", "QLD with dc", "SA with dc", "TAS with dc"], inner = length(hour_ids))
+    p_dc = StatsPlots.groupedbar!(p_no_dc,
         x_values, ls_dc, group = legend,
-        bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$"
+        bar_position = :dodge,
+        xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$"
     )
-    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_with_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_f",fmin,".pdf"]))
     StatsPlots.savefig(p_dc, plot_filename)
 end
 
@@ -782,7 +781,7 @@ function plot_hvdc_contribution(input_data, fmin, scenario, year, hours)
         end
     end
     in_dc_p = maximum(in_dc, dims = 2)
-    p_in_hvdc = Plots.plot(1:length(hour_ids), in_dc_p[:, 1], linestyle = :dash, linecolor = :black, marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    p_in_hvdc = Plots.plot(1:length(hour_ids), in_dc_p[:, 1], linestyle = :dash, linecolor = :black, marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", legend = false)
     plot_filename = joinpath("results", scenario, year, hours, join(["worst_case_hvdc_contribution_f",fmin,".pdf"]))
     Plots.savefig(p_in_hvdc, plot_filename)
 end

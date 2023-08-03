@@ -29,7 +29,8 @@ cd("/Users/hergun/.julia/dev/ISPhvdc")
 ######################################
 scenario = "2022 ISP Step Change"
 year = "2034"
-hours = "8737_8783"
+hours = "1_47"
+#hours = "8737_8783"
 
 input_data = _ISP.load_input_data(scenario, year, hours)
 _ISP.plot_system_information(input_data, scenario, year, hours)
@@ -41,7 +42,7 @@ objective_dc, objective_no_dc  = _ISP.get_and_plot_objective_value(fmin, scenari
 _ISP.plot_calculation_time(fmin, scenario, year, hours)
 
 
-fmin_ = 49.8
+fmin_ = 49.6
 _ISP.plot_load_shedding(input_data, fmin_, scenario, year, hours)
 _ISP.plot_total_inertia(input_data, fmin_, scenario, year, hours)
 _ISP.plot_tie_line_flows(input_data, fmin_, scenario, year, hours)
