@@ -725,14 +725,14 @@ end
 
 function define_tie_lines!(data)
     data["tie_lines"] = Dict{String, Any}("1" => Dict(), "2" => Dict())
-    # Heywood -> South East: 836 -> 1720
+    # Heywood -> South East: 832 -> 1720
     # Dumeresq -> Bulli Creek:  104 -> 1623
     for (br, branch) in data["branch"]
-        if (branch["f_bus"] == 836 && branch["t_bus"] == 1720)
+        if (branch["f_bus"] == 832 && branch["t_bus"] == 1720)
             data["tie_lines"]["1"]["br_idx"] = parse(Int, br)
             data["tie_lines"]["1"]["area_fr"] = 1  # 1... NSW + VIC
             data["tie_lines"]["1"]["area_to"] = 4  # 4... SA 
-        elseif (branch["t_bus"] == 836 && branch["f_bus"] == 1720)
+        elseif (branch["t_bus"] == 832 && branch["f_bus"] == 1720)
             data["tie_lines"]["1"]["br_idx"] = parse(Int, br)
             data["tie_lines"]["1"]["area_to"] = 1  # 1... NSW + VIC
             data["tie_lines"]["1"]["area_fr"] = 4  # 4... SA 
