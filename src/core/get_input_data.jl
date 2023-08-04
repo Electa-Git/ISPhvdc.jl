@@ -560,31 +560,70 @@ function fix_data!(data)
     return data
 end
 
-function fix_hvdc_data_issues!(data; no_bass = false, no_terra = false, no_murray = false)
+# function fix_hvdc_data_issues!(data; no_bass = false, no_terra = false, no_murray = false)
+
+#     if no_bass == false
+#         # BASS LINK 
+#         data["branch"]["543"]["br_status"] = 0
+#         delete!(data["bus"], "2113")
+#         data["gen"]["264"]["gen_status"] = 0
+#         data["gen"]["265"]["gen_status"] = 0
+#     end
+
+#     if no_terra == false
+#         # TERRANORALINK
+#         data["branch"]["1568"]["br_status"] = 0
+#         data["branch"]["1569"]["br_status"] = 0
+#         data["branch"]["1570"]["br_status"] = 0
+#     end
+
+#     if no_murray ==false
+#         # MURRAYLINK
+#         data["branch"]["1949"]["br_status"] = 0
+#         data["gen"]["222"]["gen_status"] = 0
+#     end
+
+#     return data
+# end
+
+function fix_hvdc_data_issues!(data; no_bass = false, no_murray = false, no_terra = false)
 
     if no_bass == false
-        # BASS LINK 
-        data["branch"]["543"]["br_status"] = 0
+        # BASS LINK
         delete!(data["bus"], "2113")
-        data["gen"]["264"]["gen_status"] = 0
-        data["gen"]["265"]["gen_status"] = 0
+        delete!(data["branch"], "543")
+        delete!(data["shunt"], "237")
+        delete!(data["gen"], "264")
+        delete!(data["gen"], "265")
+        data["bus"]["2250"]["bus_type"] = 1
     end
 
-    if no_terra == false
-        # TERRANORALINK
-        data["branch"]["1568"]["br_status"] = 0
-        data["branch"]["1569"]["br_status"] = 0
-        data["branch"]["1570"]["br_status"] = 0
-    end
-
-    if no_murray ==false
+    if no_murray == false
         # MURRAYLINK
-        data["branch"]["1949"]["br_status"] = 0
-        data["gen"]["222"]["gen_status"] = 0
+        delete!(data["gen"], "222")
+        data["bus"]["986"]["bus_type"] = 1
+        delete!(data["load"], "395")
+        delete!(data["shunt"], "98")
     end
 
+    if no_terra ==false
+        # TERRANORALINK
+        delete!(data["gen"], "206")
+        data["bus"]["211"]["bus_type"] = 1
+        delete!(data["load"],"75")
+    end
     return data
 end
+
+
+
+
+
+
+
+
+
+
 
 function add_area_dict!(data_nem)
     data_nem["areas"] = Dict{String, Any}()
@@ -653,8 +692,8 @@ function generator_uc_data!(data)
             end
             if haskey(gen, "Ramp_Up_Rate(MW/h)")
                 gen["ramp_rate"] =   (gen["Ramp_Up_Rate(MW/h)"] / data["baseMVA"]) / gen["pmax"] # in percent of maximum rating per hour
-                gen["mdt"] =   Int(gen["Minimum_Off_Time(Hours)"] / data["frequency_parameters"]["uc_time_interval"])
-                gen["mut"] =   Int(gen["Minimum_On_Time(Hours)"] / data["frequency_parameters"]["uc_time_interval"])
+                gen["mdt"] =   max(1, Int(gen["Minimum_Off_Time(Hours)"] / data["frequency_parameters"]["uc_time_interval"]))
+                gen["mut"] =   max(1, Int(gen["Minimum_On_Time(Hours)"] / data["frequency_parameters"]["uc_time_interval"]))
                 cost_var = gen["variable_op_cost(dollar/MWh_sent_out)"] * data["baseMVA"]
                 cost_fixed = (gen[ "noload_cost(dollar/MW/year)"] + gen["noload_recurring_cost(dollar/MW/year)"] + gen["fixed_op_cost(dollar/MW/year)"]) * gen["pmax"] * data["baseMVA"] / (8760 / data["frequency_parameters"]["uc_time_interval"])
                 gen["cost"] = [cost_var cost_fixed]

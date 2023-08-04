@@ -4,7 +4,7 @@ using ISPhvdc
 using PowerModels
 using PowerModelsACDC
 using CbaOPF
-using NEM_2300bus
+using NEM2000synthetic
 using JuMP
 using Ipopt
 using Plots
@@ -22,14 +22,13 @@ using Plots
 # Create short hands for the most important ones
 const _PM = PowerModels
 const _PMACDC = PowerModelsACDC
-const _SNEM = NEM_2300bus
+const _SNEM = NEM2000synthetic
 const _PP = PowerPlots
 const _SB = StatsBase
 const _ISP = ISPhvdc
 cd("/Users/hergun/.julia/dev/ISPhvdc")
 ###########################################################
 ################## INPUT SECTION ##########################
-
 # SELECT SCENARIO
 # scenario ∈ {"2022 ISP Hydrogen Superpower", "2022 ISP Progressive Change", "2022 ISP Slow Change", "2022 ISP Step Change"}
 scenario = "2022 ISP Step Change"
@@ -40,14 +39,14 @@ generator_contingencies = [10 0 5 5 5]
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 8737:2:8784)
+selected_hours = Dict{String, Any}("hour_range" => 1:2:47) #8737:2:8784
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # State if circiuts and parallel lines should be merged:
 merge_parallel_lines = true
 # Assign solvers
 dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 2.5e-3) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
-dn_res_factor = 0.5
+dn_res_factor = 0.8
 t_fcr = 0.2
 t_hvdc = 0.1
 ############ END INPUT SECTION ##############################
@@ -65,7 +64,7 @@ s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 
 # Test case data
 data_folder = joinpath("data")
-data_file_hvdc = "nem_2300bus_thermal_limits_gen_costs_hvdc_v1.m"
+data_file_hvdc = "nem_2300bus_hvdc.m" #"nem_2300bus_thermal_limits_gen_costs_hvdc_v1.m"
 
 # Get grid data from the NEM 2000 bus model m-file 
 data = _PM.parse_file(data_folder*"/"*data_file_hvdc)
@@ -153,8 +152,6 @@ fmin = 49.0:0.1:49.8
 h = join([hours[1],"_", hours[end]])
 _ISP.plot_system_information(mn_data, scenario, "$year", h)
 objective_dc, objective_no_dc, time_dc, time_no_dc = _ISP.batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h)
-
-
 
 # fn = joinpath("results",scenario, "$year", h, join(["f",49.3,"_with_dc.json"]))
 # result_dc = Dict{String, Any}()
