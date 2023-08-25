@@ -4,7 +4,7 @@ using ISPhvdc
 using PowerModels
 using PowerModelsACDC
 using CbaOPF
-using NEM_2300bus
+using NEM2000synthetic
 using JuMP
 using Ipopt
 using Plots
@@ -21,7 +21,7 @@ using JSON
 # Create short hands for the most important ones
 const _PM = PowerModels
 const _PMACDC = PowerModelsACDC
-const _SNEM = NEM_2300bus
+const _SNEM = NEM2000synthetic
 const _PP = PowerPlots
 const _SB = StatsBase
 const _ISP = ISPhvdc
@@ -37,7 +37,7 @@ year = 2034
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 8737:2:8784)
+selected_hours = Dict{String, Any}("hour_range" => 8737:2:8784) #8737:2:8784
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # Select OPF method opf ∈ {"AC", "DC", "LPAC", "SOC"}
@@ -50,7 +50,7 @@ dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer) #  https://www.gur
 lpac_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 soc_solver =  JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 1000, "print_level" => 0, "hsllib" => "/Users/hergun/IpoptMA/lib/libhsl.dylib", "linear_solver" => "ma27")
 
-dn_res_factor = 0.5
+dn_res_factor = 0.0
 ############ END INPUT SECTION ##############################
 #############################################################
 
@@ -66,7 +66,7 @@ s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 
 # Test case data
 data_folder = joinpath("data")
-data_file_hvdc = "nem_2300bus_thermal_limits_gen_costs_hvdc_v1.m"
+data_file_hvdc = "nem_2300bus_hvdc.m"
 
 # Get grid data from the NEM 2000 bus model m-file 
 data_hvdc = _PM.parse_file(data_folder*"/"*data_file_hvdc)

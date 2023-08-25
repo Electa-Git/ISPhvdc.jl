@@ -282,15 +282,37 @@ function plot_load_shedding(input_data, fmin, scenario, year, hours)
         bar_position = :stack,
         xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$"
     )
+    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_without_dc_f",fmin,".pdf"]))
+    StatsPlots.savefig(p_no_dc, plot_filename)
 
     legend = repeat(["NSW + VIC with dc", "QLD with dc", "SA with dc", "TAS with dc"], inner = length(hour_ids))
-    p_dc = StatsPlots.groupedbar!(p_no_dc,
+    p_dc = StatsPlots.groupedbar(
         x_values, ls_dc, group = legend,
-        bar_position = :dodge,
+        bar_position = :stack,
         xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$"
     )
-    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_with_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_dc, plot_filename)
+
+
+
+
+
+
+    # p_comp = Plots.plot(1:length(hour_ids), ls_no_dc[:, 1], linestyle = :solid, linecolor = :black, label = "NSW + VIC, no dc", marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    # Plots.plot!(p_comp, 1:length(hour_ids), ls_dc[:, 1], linestyle = :dash, linecolor = :black, label = "NSW + VIC, with dc", marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    # Plots.plot!(p_comp, 1:length(hour_ids), ls_no_dc[:, 2], linestyle = :solid, linecolor = :black, label = "QLD, no dc", marker = :circle, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    # Plots.plot!(p_comp, 1:length(hour_ids), ls_dc[:, 2], linestyle = :dash, linecolor = :black, label = "QLD, with dc", marker= :circle, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    # Plots.plot!(p_comp, 1:length(hour_ids), ls_no_dc[:, 3], linestyle = :solid, linecolor = :black, label = "SA, no dc", marker = :square, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    # Plots.plot!(p_comp, 1:length(hour_ids), ls_dc[:, 3], linestyle = :dash, linecolor = :black, label = "SA, with dc", marker = :square, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    # Plots.plot!(p_comp, 1:length(hour_ids), ls_no_dc[:, 4], linestyle = :solid, linecolor = :black, label = "TAS, no dc", marker = :xcross, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    # Plots.plot!(p_comp, 1:length(hour_ids), ls_dc[:, 4], linestyle = :dash, linecolor = :black, label = "TAS, with dc", marker = :xcross, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+
+    # plot_filename = joinpath("results", scenario, year, hours, join(["demandshedding_f",fmin,".pdf"]))
+    # StatsPlots.savefig(p_comp, plot_filename)
+
+
+
 end
 
 function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, hours)
@@ -735,54 +757,59 @@ end
 # end
 
 
-function plot_hvdc_contribution(input_data, fmin, scenario, year, hours)
-    print("Loading results", "\n")
-    fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_with_dc.json"]))
-    result_dc = Dict{String, Any}()
-    open(fn) do f
-    dicttxt = read(f,String)  # file information to string
-        result_dc = JSON.parse(dicttxt)  # parse and transform data
-    end
+function plot_hvdc_contribution(input_data, fmin_, scenario, year, hours)
+    p_in_hvdc = Plots.plot()
+    for fmin in fmin_
+        print("Loading results", "\n")
+        fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_with_dc.json"]))
+        result_dc = Dict{String, Any}()
+        open(fn) do f
+        dicttxt = read(f,String)  # file information to string
+            result_dc = JSON.parse(dicttxt)  # parse and transform data
+        end
 
-    hour_ids = input_data["hour_ids"]
+        hour_ids = input_data["hour_ids"]
 
-    in_dc = zeros(length(hour_ids), input_data["number_of_contingencies"])
+        in_dc = zeros(length(hour_ids), input_data["number_of_contingencies"])
 
-    baseMVA = input_data["nw"]["1"]["baseMVA"]
+        baseMVA = input_data["nw"]["1"]["baseMVA"]
 
-    print("Determining inertia", "\n")
-    for idx in 1:length(hour_ids)
-        hour = hour_ids[idx]
-        conts = hour .+ collect(1:(input_data["number_of_contingencies"] -1))
-        for jdx in 1:length(conts)
-            cont = conts[jdx]
-            in_dc[idx, jdx] = sum([conv["pconv_in_abs"] for (c, conv)  in  result_dc["solution"]["nw"]["$cont"]["convdc"]]) * baseMVA / 1e3
-            if in_dc[idx, jdx] !== 0.0
-                cont_name = input_data["nw"]["$cont"]["contingency"]
-                if !isnothing(cont_name["gen_id"])
-                    gen_id = cont_name["gen_id"]
-                    cont_mw = result_dc["solution"]["nw"]["$hour"]["gen"]["$gen_id"]["pg"] * input_data["nw"]["1"]["baseMVA"]
-                    cont_string = join(["generator ", gen_id, " with ", cont_mw, " MW"])
-                elseif !isnothing(cont_name["conv_id"])
-                    conv_id = cont_name["conv_id"]
-                    cont_mw = result_dc["solution"]["nw"]["$hour"]["convdc"]["$conv_id"]["pgrid"] * input_data["nw"]["1"]["baseMVA"]
-                    cont_string = join(["converter ", conv_id, " with ", cont_mw, " MW"])
-                elseif !isnothing(cont_name["branch_id"])
-                    branch_id = input_data["nw"]["$hour"]["tie_lines"]["$(cont_name["branch_id"])"]["br_idx"]
-                    cont_mw = result_dc["solution"]["nw"]["$hour"]["branch"]["$branch_id"]["pf"] * input_data["nw"]["1"]["baseMVA"]
-                    cont_string = join(["tie line ", branch_id, " with ", cont_mw, " MW"])
-                elseif !isnothing(cont_name["dcbranch_id"])
-                    dcbranch_id = cont_name["dcbranch_id"]
-                    cont_mw = result_dc["solution"]["nw"]["$hour"]["branchdc"]["$dcbranch_id"]["pf"] * input_data["nw"]["1"]["baseMVA"]
-                    cont_string = join(["dc line ", dcbranch_id, " with ", cont_mw, " MW"])
+        print("Determining inertia", "\n")
+        for idx in 1:length(hour_ids)
+            hour = hour_ids[idx]
+            conts = hour .+ collect(1:(input_data["number_of_contingencies"] -1))
+            for jdx in 1:length(conts)
+                cont = conts[jdx]
+                in_dc[idx, jdx] = sum([conv["pconv_in_abs"] for (c, conv)  in  result_dc["solution"]["nw"]["$cont"]["convdc"]]) * baseMVA / 1e3
+                if in_dc[idx, jdx] !== 0.0
+                    cont_name = input_data["nw"]["$cont"]["contingency"]
+                    if !isnothing(cont_name["gen_id"])
+                        gen_id = cont_name["gen_id"]
+                        cont_mw = result_dc["solution"]["nw"]["$hour"]["gen"]["$gen_id"]["pg"] * input_data["nw"]["1"]["baseMVA"]
+                        cont_string = join(["generator ", gen_id, " with ", cont_mw, " MW"])
+                    elseif !isnothing(cont_name["conv_id"])
+                        conv_id = cont_name["conv_id"]
+                        cont_mw = result_dc["solution"]["nw"]["$hour"]["convdc"]["$conv_id"]["pgrid"] * input_data["nw"]["1"]["baseMVA"]
+                        cont_string = join(["converter ", conv_id, " with ", cont_mw, " MW"])
+                    elseif !isnothing(cont_name["branch_id"])
+                        branch_id = input_data["nw"]["$hour"]["tie_lines"]["$(cont_name["branch_id"])"]["br_idx"]
+                        cont_mw = result_dc["solution"]["nw"]["$hour"]["branch"]["$branch_id"]["pf"] * input_data["nw"]["1"]["baseMVA"]
+                        cont_string = join(["tie line ", branch_id, " with ", cont_mw, " MW"])
+                    elseif !isnothing(cont_name["dcbranch_id"])
+                        dcbranch_id = cont_name["dcbranch_id"]
+                        cont_mw = result_dc["solution"]["nw"]["$hour"]["branchdc"]["$dcbranch_id"]["pf"] * input_data["nw"]["1"]["baseMVA"]
+                        cont_string = join(["dc line ", dcbranch_id, " with ", cont_mw, " MW"])
+                    end
+                    print("hour: ", idx, " contingency: ", cont_string, " dc contr = ", in_dc[idx, jdx], "\n")
                 end
-                print("hour: ", idx, " contingency: ", cont_string, " dc contr = ", in_dc[idx, jdx], "\n")
             end
         end
+        in_dc_p = maximum(in_dc, dims = 2)
+        f = join(["\$f_{min} = \$", fmin, " Hz"])
+        Plots.plot!(p_in_hvdc, 1:length(hour_ids), in_dc_p[:, 1], xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", label = f)
     end
-    in_dc_p = maximum(in_dc, dims = 2)
-    p_in_hvdc = Plots.plot(1:length(hour_ids), in_dc_p[:, 1], linestyle = :dash, linecolor = :black, marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", legend = false)
-    plot_filename = joinpath("results", scenario, year, hours, join(["worst_case_hvdc_contribution_f",fmin,".pdf"]))
+    # p_in_hvdc = Plots.plot(1:length(hour_ids), in_dc_p[:, 1], linestyle = :dash, linecolor = :black, marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", legend = false))
+    plot_filename = joinpath("results", scenario, year, hours, join(["worst_case_hvdc_contributions.pdf"]))
     Plots.savefig(p_in_hvdc, plot_filename)
 end
 

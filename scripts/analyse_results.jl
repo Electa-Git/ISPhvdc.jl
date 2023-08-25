@@ -4,7 +4,7 @@ using ISPhvdc
 using PowerModels
 using PowerModelsACDC
 using CbaOPF
-using NEM_2300bus
+using NEM2000synthetic
 using JuMP
 using Ipopt
 using Plots
@@ -21,7 +21,7 @@ using JSON
 # Create short hands for the most important ones
 const _PM = PowerModels
 const _PMACDC = PowerModelsACDC
-const _SNEM = NEM_2300bus
+const _SNEM = NEM2000synthetic
 const _PP = PowerPlots
 const _SB = StatsBase
 const _ISP = ISPhvdc
@@ -31,27 +31,28 @@ scenario = "2022 ISP Step Change"
 year = "2034"
 hours = "1_47"
 #hours = "8737_8783"
+fmin = 49.0:0.1:49.8
 
 input_data = _ISP.load_input_data(scenario, year, hours)
 _ISP.plot_system_information(input_data, scenario, year, hours)
 
-
-fmin = 49.0:0.1:49.8
+# print("Savings = ", sum([objective for (o, objective) in objective_no_dc]) - sum([objective for (o, objective) in objective_dc]), "\n")
 
 objective_dc, objective_no_dc  = _ISP.get_and_plot_objective_value(fmin, scenario, year, hours)
+print([ob - objective_dc[o] for (o, ob) in objective_no_dc])
 _ISP.plot_calculation_time(fmin, scenario, year, hours)
 
 
-fmin_ = 49.6
+fmin_ = 49.7
 _ISP.plot_load_shedding(input_data, fmin_, scenario, year, hours)
 _ISP.plot_total_inertia(input_data, fmin_, scenario, year, hours)
 _ISP.plot_tie_line_flows(input_data, fmin_, scenario, year, hours)
 # _ISP.plot_dc_flows(input_data, fmin_, scenario, year, hours)
 _ISP.plot_res_generation_and_curtailment(input_data, fmin_, scenario, year, hours)
-_ISP.plot_hvdc_contribution(input_data, fmin_, scenario, year, hours)
+_ISP.plot_hvdc_contribution(input_data, fmin, scenario, year, hours)
 
 
-fn = joinpath("results",scenario, year, hours, join(["f",49.0,"_without_dc.json"]))
+fn = joinpath("results",scenario, year, hours, join(["f",49.8,"_with_dc.json"]))
 result_dc = Dict{String, Any}()
 open(fn) do f
 dicttxt = read(f,String)  # file information to string

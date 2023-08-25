@@ -39,16 +39,16 @@ generator_contingencies = [10 0 5 5 5]
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:2:47) #8737:2:8784
+selected_hours = Dict{String, Any}("hour_range" => 1:2:48) #8737:2:8784
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # State if circiuts and parallel lines should be merged:
 merge_parallel_lines = true
 # Assign solvers
 dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 2.5e-3) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
-dn_res_factor = 0.8
-t_fcr = 0.2
-t_hvdc = 0.1
+dn_res_factor = 0.0
+t_fcr = 0.8
+t_hvdc = 0.2
 ############ END INPUT SECTION ##############################
 #############################################################
 
@@ -137,8 +137,8 @@ for (b, branch) in data["branch"]
     else
         branch["rate_a"] = branch["rate_a"] * 1.0
     end
-    # branch["angmin"] = - (branch["rate_a"] / max(1e-12, branch["br_x"]))
-    # branch["angmax"] =  (branch["rate_a"] / max(1e-12, branch["br_x"]))
+    branch["angmin"] = - (branch["rate_a"] / max(1e-12, branch["br_x"]))
+    branch["angmax"] =  (branch["rate_a"] / max(1e-12, branch["br_x"]))
 end
 
 
