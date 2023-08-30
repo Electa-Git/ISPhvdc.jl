@@ -66,7 +66,8 @@ function plot_system_information(input_data, scenario, year, hours)
     p_d = StatsPlots.groupedbar(
         x_values, total_demand, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{d}~in~GW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{d}~in~GW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["total_demand.pdf"]))
     StatsPlots.savefig(p_d, plot_filename)
@@ -74,7 +75,8 @@ function plot_system_information(input_data, scenario, year, hours)
     p_wind = StatsPlots.groupedbar(
         x_values, total_wind, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{w}~in~GW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{w}~in~GW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["total_wind_capacity.pdf"]))
     StatsPlots.savefig(p_wind, plot_filename)
@@ -82,7 +84,8 @@ function plot_system_information(input_data, scenario, year, hours)
     p_pv = StatsPlots.groupedbar(
         x_values, total_pv, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{pv}~in~GW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{pv}~in~GW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["total_pv_capacity.pdf"]))
     StatsPlots.savefig(p_pv, plot_filename)
@@ -90,9 +93,10 @@ function plot_system_information(input_data, scenario, year, hours)
     p_gen = StatsPlots.groupedbar(
         x_values, total_gen, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{pv}~in~GW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{pv}~in~GW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    StatsPlots.plot!(p_gen, 0.5:1:length(hour_ids), sum(total_demand, dims = 2), marker = :diamond, label = "total demand")
+    StatsPlots.plot!(p_gen, 0.5:1:length(hour_ids), sum(total_demand, dims = 2), marker = :diamond, label = "total demand", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
     plot_filename = joinpath("results", scenario, year, hours,join(["total_gen_capacity.pdf"]))
     StatsPlots.savefig(p_gen, plot_filename)
 
@@ -133,8 +137,8 @@ function get_and_plot_objective_value(fmin, scenario, year, hours)
         end
     end
 
-    p1 = Plots.plot(fmin, o_no_dc', marker = :diamond, xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "without HVDC contribution")
-    Plots.plot!(p1, fmin, o_dc', marker = :diamond,  xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "with HVDC contribution")
+    p1 = Plots.plot(fmin, o_no_dc', marker = :diamond, xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "without HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    Plots.plot!(p1, fmin, o_dc', marker = :diamond,  xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "with HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
     plot_filename = joinpath("results", scenario, year, hours, "objective_comparison.pdf")
     Plots.savefig(p1, plot_filename)
 
@@ -188,7 +192,8 @@ function plot_calculation_time(fmin, scenario, year, hours)
     p_no_dc = StatsPlots.groupedbar(
         x_values, t_no_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$f_{min}~in~Hz\$", ylabel = "\$t~in~s\$"
+        xlabel = "\$f_{min}~in~Hz\$", ylabel = "\$t~in~s\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["calculation_time_no_dc.pdf"]))
     StatsPlots.savefig(p_no_dc, plot_filename)
@@ -196,7 +201,8 @@ function plot_calculation_time(fmin, scenario, year, hours)
     p_dc = StatsPlots.groupedbar(
         x_values, t_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$f_{min}~in~Hz\$", ylabel = "\$t~in~s\$"
+        xlabel = "\$f_{min}~in~Hz\$", ylabel = "\$t~in~s\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["calculation_time_dc.pdf"]))
     StatsPlots.savefig(p_dc, plot_filename)
@@ -280,7 +286,8 @@ function plot_load_shedding(input_data, fmin, scenario, year, hours)
     p_no_dc = StatsPlots.groupedbar(
         x_values, ls_no_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_without_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_no_dc, plot_filename)
@@ -289,7 +296,8 @@ function plot_load_shedding(input_data, fmin, scenario, year, hours)
     p_dc = StatsPlots.groupedbar(
         x_values, ls_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_with_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_dc, plot_filename)
@@ -431,7 +439,8 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
     p_wind_no_dc = StatsPlots.groupedbar(
         x_values, curt_wind_no_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["wind_curtailment_without_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_wind_no_dc, plot_filename)
@@ -439,7 +448,8 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
     p_wind_dc = StatsPlots.groupedbar(
         x_values, curt_wind_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["wind_curtailment_with_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_wind_dc, plot_filename)
@@ -447,7 +457,8 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
     p_pv_no_dc = StatsPlots.groupedbar(
         x_values, curt_pv_no_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["pv_curtailment_without_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_pv_no_dc, plot_filename)
@@ -455,7 +466,8 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
     p_pv_dc = StatsPlots.groupedbar(
         x_values, curt_pv_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["pv_curtailment_with_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_pv_dc, plot_filename)
@@ -463,7 +475,8 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
     p_wind_no_dc = StatsPlots.groupedbar(
         x_values, gen_wind_no_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["wind_generation_without_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_wind_no_dc, plot_filename)
@@ -471,7 +484,7 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
     p_wind_dc = StatsPlots.groupedbar(
         x_values, gen_wind_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["wind_generation_with_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_wind_dc, plot_filename)
@@ -479,7 +492,8 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
     p_pv_no_dc = StatsPlots.groupedbar(
         x_values, gen_pv_no_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["pv_generation_without_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_pv_no_dc, plot_filename)
@@ -487,7 +501,8 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
     p_pv_dc = StatsPlots.groupedbar(
         x_values, gen_pv_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$"
+        xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours,join(["pv_generation_with_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_pv_dc, plot_filename)
@@ -559,7 +574,8 @@ function plot_total_inertia(input_data, fmin, scenario, year, hours)
     p_no_dc = StatsPlots.groupedbar(
         x_values, in_no_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$"
+        xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours, join(["inertia_without_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_no_dc, plot_filename)
@@ -567,20 +583,21 @@ function plot_total_inertia(input_data, fmin, scenario, year, hours)
     p_dc = StatsPlots.groupedbar(
         x_values, in_dc, group = legend,
         bar_position = :stack,
-        xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$"
+        xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$",
+        xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
     plot_filename = joinpath("results", scenario, year, hours, join(["inertia_with_dc_f",fmin,".pdf"]))
     StatsPlots.savefig(p_dc, plot_filename)
 
 
-    p_comp = Plots.plot(1:length(hour_ids), in_no_dc[:, 1], linestyle = :solid, linecolor = :black, label = "NSW + VIC, no dc", marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
-    Plots.plot!(p_comp, 1:length(hour_ids), in_dc[:, 1], linestyle = :dash, linecolor = :black, label = "NSW + VIC, with dc", marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
-    Plots.plot!(p_comp, 1:length(hour_ids), in_no_dc[:, 2], linestyle = :solid, linecolor = :black, label = "QLD, no dc", marker = :circle, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
-    Plots.plot!(p_comp, 1:length(hour_ids), in_dc[:, 2], linestyle = :dash, linecolor = :black, label = "QLD, with dc", marker= :circle, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
-    Plots.plot!(p_comp, 1:length(hour_ids), in_no_dc[:, 3], linestyle = :solid, linecolor = :black, label = "SA, no dc", marker = :square, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
-    Plots.plot!(p_comp, 1:length(hour_ids), in_dc[:, 3], linestyle = :dash, linecolor = :black, label = "SA, with dc", marker = :square, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
-    Plots.plot!(p_comp, 1:length(hour_ids), in_no_dc[:, 4], linestyle = :solid, linecolor = :black, label = "TAS, no dc", marker = :xcross, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
-    Plots.plot!(p_comp, 1:length(hour_ids), in_dc[:, 4], linestyle = :dash, linecolor = :black, label = "TAS, with dc", marker = :xcross, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright)
+    p_comp = Plots.plot(1:length(hour_ids), in_no_dc[:, 1], linestyle = :solid, linecolor = :black, label = "NSW + VIC, no dc", marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright, fontfamily = "Computer Modern")
+    Plots.plot!(p_comp, 1:length(hour_ids), in_dc[:, 1], linestyle = :dash, linecolor = :black, label = "NSW + VIC, with dc", marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright, fontfamily = "Computer Modern")
+    Plots.plot!(p_comp, 1:length(hour_ids), in_no_dc[:, 2], linestyle = :solid, linecolor = :black, label = "QLD, no dc", marker = :circle, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright, fontfamily = "Computer Modern")
+    Plots.plot!(p_comp, 1:length(hour_ids), in_dc[:, 2], linestyle = :dash, linecolor = :black, label = "QLD, with dc", marker= :circle, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright, fontfamily = "Computer Modern")
+    Plots.plot!(p_comp, 1:length(hour_ids), in_no_dc[:, 3], linestyle = :solid, linecolor = :black, label = "SA, no dc", marker = :square, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright, fontfamily = "Computer Modern")
+    Plots.plot!(p_comp, 1:length(hour_ids), in_dc[:, 3], linestyle = :dash, linecolor = :black, label = "SA, with dc", marker = :square, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright, fontfamily = "Computer Modern")
+    Plots.plot!(p_comp, 1:length(hour_ids), in_no_dc[:, 4], linestyle = :solid, linecolor = :black, label = "TAS, no dc", marker = :xcross, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright, fontfamily = "Computer Modern")
+    Plots.plot!(p_comp, 1:length(hour_ids), in_dc[:, 4], linestyle = :dash, linecolor = :black, label = "TAS, with dc", marker = :xcross, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$H~in~GWs\$", legend_position = :outertopright, fontfamily = "Computer Modern")
 
     plot_filename = joinpath("results", scenario, year, hours, join(["inertia_comparison_f",fmin,".pdf"]))
     StatsPlots.savefig(p_comp, plot_filename)
@@ -661,14 +678,14 @@ function plot_tie_line_flows(input_data, fmin, scenario, year, hours)
 
 
     label = join([input_data["nw"]["1"]["tie_lines"]["1"]["direction"], " no dc"])    
-    p_comp = Plots.plot(1:length(hour_ids), tlf_no_dc[:, 1], linestyle = :solid, label = label, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{tl}~in~MVA\$", legend_position = :outertopright)
+    p_comp = Plots.plot(1:length(hour_ids), tlf_no_dc[:, 1], linestyle = :solid, label = label, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{tl}~in~MVA\$", legend_position = :outertopright,xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
     label = join([input_data["nw"]["1"]["tie_lines"]["1"]["direction"], " with dc"])  
-    Plots.plot!(p_comp, 1:length(hour_ids), tlf_dc[:, 1], linestyle = :solid, label = label, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{tl}~in~MVA\$", legend_position = :outertopright)
+    Plots.plot!(p_comp, 1:length(hour_ids), tlf_dc[:, 1], linestyle = :solid, label = label, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{tl}~in~MVA\$", legend_position = :outertopright,xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
     for idx in 2:length(input_data["nw"]["1"]["tie_lines"])
         label = join([input_data["nw"]["1"]["tie_lines"]["$idx"]["direction"], " no dc"])    
-        Plots.plot!(p_comp, 1:length(hour_ids), tlf_no_dc[:, idx], linestyle = :solid, label = label, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{tl}~in~MVA\$", legend_position = :outertopright)
+        Plots.plot!(p_comp, 1:length(hour_ids), tlf_no_dc[:, idx], linestyle = :solid, label = label, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{tl}~in~MVA\$", legend_position = :outertopright,xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
         label = join([input_data["nw"]["1"]["tie_lines"]["$idx"]["direction"], " with dc"])  
-        Plots.plot!(p_comp, 1:length(hour_ids), tlf_dc[:, idx], linestyle = :solid, label = label, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{tl}~in~MVA\$", legend_position = :outertopright)
+        Plots.plot!(p_comp, 1:length(hour_ids), tlf_dc[:, idx], linestyle = :solid, label = label, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{tl}~in~MVA\$", legend_position = :outertopright,xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
     end
 
     plot_filename = joinpath("results", scenario, year, hours, join(["flow_comparison_f",fmin,".pdf"]))
@@ -806,7 +823,11 @@ function plot_hvdc_contribution(input_data, fmin_, scenario, year, hours)
         end
         in_dc_p = maximum(in_dc, dims = 2)
         f = join(["\$f_{min} = \$", fmin, " Hz"])
-        Plots.plot!(p_in_hvdc, 1:length(hour_ids), in_dc_p[:, 1], xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", label = f)
+        if length(fmin) == 1
+            Plots.plot!(p_in_hvdc, 1:length(hour_ids), in_dc_p[:, 1], linestyle = :dash, linecolor = :black, marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", label = f, xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+        else
+            Plots.plot!(p_in_hvdc, 1:length(hour_ids), in_dc_p[:, 1], xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", label = f, xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+        end
     end
     # p_in_hvdc = Plots.plot(1:length(hour_ids), in_dc_p[:, 1], linestyle = :dash, linecolor = :black, marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", legend = false))
     plot_filename = joinpath("results", scenario, year, hours, join(["worst_case_hvdc_contributions.pdf"]))

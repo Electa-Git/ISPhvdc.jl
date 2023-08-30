@@ -29,8 +29,8 @@ cd("/Users/hergun/.julia/dev/ISPhvdc")
 ######################################
 scenario = "2022 ISP Step Change"
 year = "2034"
-hours = "1_47"
-#hours = "8737_8783"
+#hours = "1_47"
+hours = "8737_8783"
 fmin = 49.0:0.1:49.8
 
 input_data = _ISP.load_input_data(scenario, year, hours)
@@ -49,7 +49,7 @@ _ISP.plot_total_inertia(input_data, fmin_, scenario, year, hours)
 _ISP.plot_tie_line_flows(input_data, fmin_, scenario, year, hours)
 # _ISP.plot_dc_flows(input_data, fmin_, scenario, year, hours)
 _ISP.plot_res_generation_and_curtailment(input_data, fmin_, scenario, year, hours)
-_ISP.plot_hvdc_contribution(input_data, fmin, scenario, year, hours)
+_ISP.plot_hvdc_contribution(input_data, fmin_, scenario, year, hours)
 
 
 fn = joinpath("results",scenario, year, hours, join(["f",49.8,"_with_dc.json"]))
