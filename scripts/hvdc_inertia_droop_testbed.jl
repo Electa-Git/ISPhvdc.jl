@@ -45,10 +45,12 @@ download_data = false
 # State if circiuts and parallel lines should be merged:
 merge_parallel_lines = true
 # Assign solvers
-dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 2.5e-3) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
+dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 1.5e-2, "TimeLimit" => 10800) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
 dn_res_factor = 0.0
+t_fcrd = 6.0
 t_fcr = 1.0
 t_hvdc = 0.5
+extension = "_test"
 ############ END INPUT SECTION ##############################
 #############################################################
 
@@ -117,8 +119,10 @@ fmin = 49.5
 data["frequency_parameters"] = Dict{String, Any}()
 data["frequency_parameters"]["fmin"] = fmin
 data["frequency_parameters"]["f0"] = 50.0
+data["frequency_parameters"]["fdb"] = 0.1
 data["frequency_parameters"]["fmax"] =  data["frequency_parameters"]["f0"] + ((data["frequency_parameters"]["f0"] - fmin))
 data["frequency_parameters"]["t_fcr"] = t_fcr
+data["frequency_parameters"]["t_fcrd"] = t_fcrd
 data["frequency_parameters"]["uc_time_interval"] = 1.0 # hours
 
 
@@ -141,99 +145,13 @@ for (b, branch) in data["branch"]
     branch["angmax"] =  (branch["rate_a"] / max(1e-12, branch["br_x"]))
 end
 
-
 # Function to write generator & converter info:
-_ISP.generator_uc_data!(data)
+_ISP.generator_uc_data!(data, fcr_cost = 50)
 _ISP.converter_uc_data!(data, t_hvdc = t_hvdc, ffr_cost = 20)
 _ISP.define_tie_lines!(data)
 @time mn_data = _ISP.multi_network_uc_data(data, total_demand_series, dn_demand_series, pv_series, wind_series, pv_rez, wind_rez, hours, generator_contingencies, no_dc_cont = false, dn_res_factor = dn_res_factor)
 
-fmin = 49.0:0.1:49.0
+fmin = 49.7:0.1:49.7
 h = join([hours[1],"_", hours[end]])
 _ISP.plot_system_information(mn_data, scenario, "$year", h)
-objective_dc, objective_no_dc, time_dc, time_no_dc = _ISP.batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h)
-
-# fn = joinpath("results",scenario, "$year", h, join(["f",49.3,"_with_dc.json"]))
-# result_dc = Dict{String, Any}()
-# open(fn) do f
-# dicttxt = read(f,String)  # file information to string
-#     global result_dc = JSON.parse(dicttxt)  # parse and transform data
-# end
-
-# for n in mn_data["hour_ids"]
-#     for (l, load) in result_dc["solution"]["nw"]["$n"]["load"]
-#         if load["pcurt"] >=1e-9
-#             print(n , " ", l, " ",load["pcurt"], "\n")
-#         end
-#     end
-# end
-
-
-# for (l, load) in result_dc["solution"]["nw"]["61"]["load"]
-#     if load["pcurt"] >= 1e-9
-#     print(l, ": ", load["pcurt"], "\n")
-#     end
-# end
-
-# for n in sort(parse.(Int, keys(mn_data["nw"])))
-#     nw = mn_data["nw"]["$n"]
-#     number_of_contingencies = mn_data["number_of_contingencies"]
-#     if mod(n, number_of_contingencies) == 0
-#         hour_id = Int(n - number_of_contingencies + 1)
-#     else
-#         hour_id = Int(n - mod(n, number_of_contingencies) + 1)
-#     end
-#     if !isnothing(nw["contingency"]["gen_id"])
-#         gen_id = nw["contingency"]["gen_id"]
-#         print(hour_id, " ", gen_id, ": ", nw["gen"]["$gen_id"]["name"], " ", nw["gen"]["$gen_id"]["type"], ", pmax = ",mn_data["nw"]["$hour_id"]["gen"]["$gen_id"]["pmax"],  "\n")
-#     end
-# end
-
-# for (g, gen) in mn_data["nw"]["1"]["gen"]
-#     gen_bus = gen["gen_bus"]
-#     if mn_data["nw"]["1"]["bus"]["$gen_bus"]["area"] == 4
-#         print(g, " ", gen["name"], " ", gen["type"], " ", gen["pmax"], "\n")
-#     end
-# end
-
-# a = _ISP.find_most_severe_generator_contingecnies(mn_data, 1, generator_contingencies)
-# for i in a
-#     gen = mn_data["nw"]["1"]["gen"]["$i"]
-#     print(i, " ", gen["name"], " ", gen["type"], " ", gen["pmax"], "\n")
-# end
-
-#  s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => true, "relax_uc_binaries" => true)
-# @time result_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
-
-# s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => false, "relax_uc_binaries" => true)
-# @time result_no_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
-
-# for n in sort(parse.(Int, keys(result_dc["solution"]["nw"])))
-#     print(n, " dc zone 1: ", result_dc["solution"]["nw"]["$n"]["zones"]["1"]["dc_contr"], " dc zone 2: ", result_dc["solution"]["nw"]["$n"]["zones"]["2"]["dc_contr"], "\n")
-# end
-
-# all_gen_keys = sort(parse.(Int, collect(keys(mn_data["nw"]["1"]["gen"]))))
-# pmax = [mn_data["nw"]["1"]["gen"]["$g"]["pmax"] * mn_data["nw"]["1"]["gen"]["$g"]["inertia_constants"] for g in all_gen_keys]
-# gen_keys = sortperm(pmax, rev = true)[1:25]x
-
-
-# area_gens = Dict{String, Any}(["$area" => [] for area in 1:5])
-# area_gen_keys = Dict{String, Any}(["$area" => [] for area in 1:5])
-
-# for (g, gen) in mn_data["nw"]["1"]["gen"]
-#     area = gen["area"]
-#     push!(area_gens["$area"], g)
-# end
-
-# for (area, gens) in area_gens
-#     gen_keys = sort(parse.(Int, collect(gens)))
-#     pmax = [mn_data["nw"]["1"]["gen"]["$g"]["pmax"] for g in gen_keys]
-#     if !isempty(pmax)
-#         area_gen_keys[area] = gen_keys[sortperm(pmax, rev = true)[1:5]]
-#     end
-# end
-
-
-# for g in gen_keys
-#     print(g, " ", mn_data["nw"]["1"]["gen"]["$g"]["type"], " ", mn_data["nw"]["1"]["gen"]["$g"]["area"], "\n")
-# end
+objective_dc, objective_no_dc, time_dc, time_no_dc = _ISP.batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h; droop = true, extension = extension)

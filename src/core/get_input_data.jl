@@ -672,8 +672,9 @@ function merge_branches!(data, b_idx, parallel_br)
 end
 
 
-function generator_uc_data!(data)
+function generator_uc_data!(data; fcr_cost = 50)
     for (g, gen) in data["gen"]
+        gen["fcr_cost"] = fcr_cost * data["baseMVA"] / (3600 / data["frequency_parameters"]["t_fcrd"])  # 
         bus_id = gen["gen_bus"]
         if gen["gen_status"] == 1
             gen["zone"] = data["bus"]["$bus_id"]["zone"]
@@ -697,8 +698,12 @@ function generator_uc_data!(data)
                 cost_var = gen["variable_op_cost(dollar/MWh_sent_out)"] * data["baseMVA"]
                 cost_fixed = (gen[ "noload_cost(dollar/MW/year)"] + gen["noload_recurring_cost(dollar/MW/year)"] + gen["fixed_op_cost(dollar/MW/year)"]) * gen["pmax"] * data["baseMVA"] / (8760 / data["frequency_parameters"]["uc_time_interval"])
                 gen["cost"] = [cost_var cost_fixed]
+                gen["ramp_rate_per_s"] =   (gen["Ramp_Up_Rate(MW/h)"] / data["baseMVA"] / 3600)
+                gen["fcr_contribution"] = true
             else
                 gen["ramp_rate"] = 1.0
+                gen["ramp_rate_per_s"] =   0.0#(gen["pmax"] / 3600)
+                gen["fcr_contribution"] = false
                 gen["mdt"] = Int(1 / data["frequency_parameters"]["uc_time_interval"])
                 gen["mut"] = Int(1 / data["frequency_parameters"]["uc_time_interval"])
             end
@@ -711,14 +716,15 @@ function generator_uc_data!(data)
     end
 end
 
-function converter_uc_data!(data; t_hvdc = 0.1, ffr_cost=50)
+function converter_uc_data!(data; t_hvdc = 0.1, ffr_cost=50, rdc = 1000)
     if haskey(data, "convdc")
         for (c, conv) in data["convdc"]
             conv_bus = conv["busac_i"]
             conv["zone"] = data["bus"]["$conv_bus"]["zone"]
             conv["area"] = data["bus"]["$conv_bus"]["area"]
             conv["t_hvdc"] = t_hvdc
-            conv["ffr_cost"] = ffr_cost
+            conv["ffr_cost"] = ffr_cost * data["baseMVA"] / (3600 / data["frequency_parameters"]["t_fcrd"])
+            conv["rmax"] = rdc / data["baseMVA"]
         end
     end
 end

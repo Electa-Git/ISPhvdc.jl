@@ -37,7 +37,7 @@ year = 2034
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 8737:2:8784) #8737:2:8784
+selected_hours = Dict{String, Any}("hour_range" => 1:2:24) #8737:2:8784
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # Select OPF method opf ∈ {"AC", "DC", "LPAC", "SOC"}
@@ -138,6 +138,7 @@ hourly_data["frequency_parameters"]["fmin"] = fmin
 hourly_data["frequency_parameters"]["f0"] = 50.0
 hourly_data["frequency_parameters"]["fmax"] =  hourly_data["frequency_parameters"]["f0"] + ((hourly_data["frequency_parameters"]["f0"] - fmin))
 hourly_data["frequency_parameters"]["t_fcr"] = 0.1
+hourly_data["frequency_parameters"]["t_fcrd"] = 6.0
 hourly_data["frequency_parameters"]["uc_time_interval"] = 1.0 # hours
 
 # Select hours

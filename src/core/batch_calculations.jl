@@ -1,4 +1,4 @@
-function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h)
+function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h; droop = false, extension = "")
 
     objective_dc = Dict{String, Any}(["$i"=>[] for i in 1:length(fmin)])
     objective_no_dc = Dict{String, Any}(["$i"=>[] for i in 1:length(fmin)])
@@ -17,8 +17,8 @@ function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h)
     if !isdir(joinpath("results", scenario, y, h))
         mkdir(joinpath("results", scenario, y, h))
     end
-
-    filename = joinpath("results", scenario, y, h,  join(["input_data.json"]))
+    
+    filename = joinpath("results", scenario, y, h,  join(["input_data", extension,".json"]))
     json_string = JSON.json(mn_data)
     open(filename,"w") do f
     write(f, json_string)
@@ -30,8 +30,14 @@ function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h)
         adjust_minimum_freqeuncy!(mn_data, fmin_)
 
         s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => true, "relax_uc_binaries" => true)
-        t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
-        filename = joinpath("results", scenario, y, h, join(["f",fmin_,"_with_dc.json"]))
+        if droop == false
+            t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            filename = joinpath("results", scenario, y, h, join(["f",fmin_,extension,"_with_dc.json"]))
+        else
+            t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc_droop(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            filename = joinpath("results", scenario, y, h, join(["f",fmin_,extension,"_with_dc.json"]))
+        end
+
         json_string = JSON.json(result_dc)
         open(filename,"w") do f
         write(f, json_string)
@@ -42,8 +48,13 @@ function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h)
         json_string = nothing
 
         s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => false, "relax_uc_binaries" => true)
-        t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
-        filename = joinpath("results", scenario, y, h, join(["f",fmin_,"_without_dc.json"]))
+        if droop == false
+            t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            filename = joinpath("results", scenario, y, h, join(["f",fmin_,extension,"_without_dc.json"]))
+        else
+            t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc_droop(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            filename = joinpath("results", scenario, y, h, join(["f",fmin_,extension,"_without_dc.json"]))
+        end
         json_string = JSON.json(result_no_dc)
         open(filename,"w") do f
         write(f, json_string)
@@ -54,37 +65,37 @@ function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h)
         json_string = nothing
     end
 
-    filename = joinpath("results", scenario, y, h, join(["objective_dc.json"]))
+    filename = joinpath("results", scenario, y, h, join(["objective",extension,"_dc.json"]))
     json_string = JSON.json(objective_dc)
     open(filename,"w") do f
     write(f, json_string)
     end
 
-    filename = joinpath("results", scenario, y, h, join(["objective_no_dc.json"]))
+    filename = joinpath("results", scenario, y, h, join(["objective",extension,"_no_dc.json"]))
     json_string = JSON.json(objective_no_dc)
     open(filename,"w") do f
     write(f, json_string)
     end
 
-    filename = joinpath("results", scenario, y, h, join(["calculation_time_dc.json"]))
+    filename = joinpath("results", scenario, y, h, join(["calculation",extension,"_time_dc.json"]))
     json_string = JSON.json(t_dc)
     open(filename,"w") do f
     write(f, json_string)
     end
 
-    filename = joinpath("results", scenario, y, h, join(["calculation_time_no_dc.json"]))
+    filename = joinpath("results", scenario, y, h, join(["calculation",extension,"_time_no_dc.json"]))
     json_string = JSON.json(t_no_dc)
     open(filename,"w") do f
     write(f, json_string)
     end
 
-    filename = joinpath("results", scenario, y, h, join(["solver_time_dc.json"]))
+    filename = joinpath("results", scenario, y, h, join(["solver_time",extension,"_dc.json"]))
     json_string = JSON.json(t_opt_dc)
     open(filename,"w") do f
     write(f, json_string)
     end
 
-    filename = joinpath("results", scenario, y, h, join(["solver_time_no_dc.json"]))
+    filename = joinpath("results", scenario, y, h, join(["solver_time",extension,"_no_dc.json"]))
     json_string = JSON.json(t_opt_no_dc)
     open(filename,"w") do f
     write(f, json_string)

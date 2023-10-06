@@ -104,16 +104,16 @@ end
 
 
 
-function get_and_plot_objective_value(fmin, scenario, year, hours)
+function get_and_plot_objective_value(fmin, scenario, year, hours; extension = "")
 
-    fn = joinpath("results", scenario, year, hours, join(["objective_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["objective",extension,"_dc.json"]))
     objective_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string
         objective_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["objective_no_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["objective",extension,"_no_dc.json"]))
     objective_no_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string
@@ -139,7 +139,7 @@ function get_and_plot_objective_value(fmin, scenario, year, hours)
 
     p1 = Plots.plot(fmin, o_no_dc', marker = :diamond, xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "without HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
     Plots.plot!(p1, fmin, o_dc', marker = :diamond,  xlabel = "\$f_{min} in~Hz\$", ylabel = "\$Cost~in~M€\$", label = "with HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
-    plot_filename = joinpath("results", scenario, year, hours, "objective_comparison.pdf")
+    plot_filename = joinpath("results", scenario, year, hours, join(["objective",extension,"_comparison.pdf"]))
     Plots.savefig(p1, plot_filename)
 
     return objective_dc, objective_no_dc

@@ -29,16 +29,17 @@ cd("/Users/hergun/.julia/dev/ISPhvdc")
 ######################################
 scenario = "2022 ISP Step Change"
 year = "2034"
-#hours = "1_47"
-hours = "8737_8783"
-fmin = 49.0:0.1:49.8
+hours = "1_47"
+#hours = "8737_8783"
+fmin = 49.0:0.1:49.7
+extension = "_droop"
 
 input_data = _ISP.load_input_data(scenario, year, hours)
 _ISP.plot_system_information(input_data, scenario, year, hours)
 
 # print("Savings = ", sum([objective for (o, objective) in objective_no_dc]) - sum([objective for (o, objective) in objective_dc]), "\n")
 
-objective_dc, objective_no_dc  = _ISP.get_and_plot_objective_value(fmin, scenario, year, hours)
+objective_dc, objective_no_dc  = _ISP.get_and_plot_objective_value(fmin, scenario, year, hours, extension = extension)
 print([ob - objective_dc[o] for (o, ob) in objective_no_dc])
 _ISP.plot_calculation_time(fmin, scenario, year, hours)
 
@@ -51,15 +52,40 @@ _ISP.plot_tie_line_flows(input_data, fmin_, scenario, year, hours)
 _ISP.plot_res_generation_and_curtailment(input_data, fmin_, scenario, year, hours)
 _ISP.plot_hvdc_contribution(input_data, fmin_, scenario, year, hours)
 
+# objective_dc = Dict("$f" => 0.0 for f in 1:length(fmin))
+# objective_no_dc = Dict("$f" => 0.0 for f in 1:length(fmin))
+# idx = 1
+# for f in 49.0:0.1:49.7
+#     fn = joinpath("results",scenario, year, hours, join(["f",f,"droop_with_dc.json"]))
+#     result_dc = Dict{String, Any}()
+#     open(fn) do f
+#     dicttxt = read(f,String)  # file information to string
+#         global result_dc = JSON.parse(dicttxt)  # parse and transform data
+#     end
+#     objective_dc["$idx"] = result_dc["objective"]
 
-fn = joinpath("results",scenario, year, hours, join(["f",49.8,"_with_dc.json"]))
-result_dc = Dict{String, Any}()
-open(fn) do f
-dicttxt = read(f,String)  # file information to string
-    global result_dc = JSON.parse(dicttxt)  # parse and transform data
-end
+#     fn = joinpath("results",scenario, year, hours, join(["f",f,"droop_without_dc.json"]))
+#     result_no_dc = Dict{String, Any}()
+#     open(fn) do f
+#     dicttxt = read(f,String)  # file information to string
+#         global result_no_dc = JSON.parse(dicttxt)  # parse and transform data
+#     end
+#     objective_no_dc["$idx"] = result_no_dc["objective"]
 
+#     global idx = idx + 1
+# end
 
+# filename = joinpath("results", scenario, year, hours, join(["objective_droop_dc.json"]))
+# json_string = JSON.json(objective_dc)
+# open(filename,"w") do f
+# write(f, json_string)
+# end
+
+# filename = joinpath("results", scenario, year, hours, join(["objective_droop_no_dc.json"]))
+# json_string = JSON.json(objective_no_dc)
+# open(filename,"w") do f
+# write(f, json_string)
+# end
 # # for (l, load) in result_dc["solution"]["nw"]["61"]["load"]
 # #     if load["pcurt"] >= 1e-9
 # #     print(l, ": ", load["pcurt"], "\n")
