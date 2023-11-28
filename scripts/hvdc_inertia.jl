@@ -39,16 +39,17 @@ generator_contingencies = [10 0 5 5 5]
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:2:48) #8737:2:8784
+selected_hours = Dict{String, Any}("hour_range" => 1:1:2) #8737:2:8784
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # State if circiuts and parallel lines should be merged:
 merge_parallel_lines = true
 # Assign solvers
 dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 2.5e-3) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
-dn_res_factor = 0.0
-t_fcr = 1.0
-t_hvdc = 0.5
+t_fcrd = 6.0
+t_fcr = 0.8
+extension = "_droop"
+t_hvdc = 0.2
 ############ END INPUT SECTION ##############################
 #############################################################
 
@@ -120,7 +121,8 @@ data["frequency_parameters"]["f0"] = 50.0
 data["frequency_parameters"]["fmax"] =  data["frequency_parameters"]["f0"] + ((data["frequency_parameters"]["f0"] - fmin))
 data["frequency_parameters"]["t_fcr"] = t_fcr
 data["frequency_parameters"]["uc_time_interval"] = 1.0 # hours
-
+data["frequency_parameters"]["t_fcrd"] = t_fcrd
+data["frequency_parameters"]["fdb"] = 0.1
 
 h = join([hours[1],"_", hours[end]])
 y = "$year"
@@ -148,7 +150,7 @@ _ISP.converter_uc_data!(data, t_hvdc = t_hvdc, ffr_cost = 20)
 _ISP.define_tie_lines!(data)
 @time mn_data = _ISP.multi_network_uc_data(data, total_demand_series, dn_demand_series, pv_series, wind_series, pv_rez, wind_rez, hours, generator_contingencies, no_dc_cont = false, dn_res_factor = dn_res_factor)
 
-fmin = 49.0:0.1:49.0
+fmin = 49.7:0.1:49.7
 h = join([hours[1],"_", hours[end]])
 _ISP.plot_system_information(mn_data, scenario, "$year", h)
 objective_dc, objective_no_dc, time_dc, time_no_dc = _ISP.batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h)

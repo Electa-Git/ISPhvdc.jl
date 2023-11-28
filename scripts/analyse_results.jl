@@ -29,10 +29,10 @@ cd("/Users/hergun/.julia/dev/ISPhvdc")
 ######################################
 scenario = "2022 ISP Step Change"
 year = "2034"
-hours = "1_47"
+hours = "1_2"
 #hours = "8737_8783"
-fmin = 49.0:0.1:49.7
-extension = "_droop"
+fmin = 49.7:0.1:49.7
+extension = "_test"
 
 input_data = _ISP.load_input_data(scenario, year, hours)
 _ISP.plot_system_information(input_data, scenario, year, hours)
@@ -44,13 +44,28 @@ print([ob - objective_dc[o] for (o, ob) in objective_no_dc])
 _ISP.plot_calculation_time(fmin, scenario, year, hours)
 
 
-fmin_ = 49.7
+fmin_ = 49.4
 _ISP.plot_load_shedding(input_data, fmin_, scenario, year, hours)
 _ISP.plot_total_inertia(input_data, fmin_, scenario, year, hours)
 _ISP.plot_tie_line_flows(input_data, fmin_, scenario, year, hours)
 # _ISP.plot_dc_flows(input_data, fmin_, scenario, year, hours)
 _ISP.plot_res_generation_and_curtailment(input_data, fmin_, scenario, year, hours)
 _ISP.plot_hvdc_contribution(input_data, fmin_, scenario, year, hours)
+
+
+fn = joinpath("results",scenario, year, hours, join(["f",49.7,"_test_with_dc.json"]))
+result_dc = Dict{String, Any}()
+open(fn) do f
+dicttxt = read(f,String)  # file information to string
+    global result_dc = JSON.parse(dicttxt)  # parse and transform data
+end
+
+fn = joinpath("results",scenario, year, hours, join(["f",49.7,"_test_without_dc.json"]))
+result_no_dc = Dict{String, Any}()
+open(fn) do f
+dicttxt = read(f,String)  # file information to string
+    global result_no_dc = JSON.parse(dicttxt)  # parse and transform data
+end
 
 # objective_dc = Dict("$f" => 0.0 for f in 1:length(fmin))
 # objective_no_dc = Dict("$f" => 0.0 for f in 1:length(fmin))

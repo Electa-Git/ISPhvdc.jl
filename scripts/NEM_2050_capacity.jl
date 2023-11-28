@@ -37,7 +37,7 @@ year = 2034
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:2:24) #8737:2:8784
+selected_hours = Dict{String, Any}("hour_range" => 368:1:368)
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # Select OPF method opf ∈ {"AC", "DC", "LPAC", "SOC"}

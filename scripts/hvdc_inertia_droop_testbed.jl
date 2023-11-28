@@ -4,7 +4,7 @@ using ISPhvdc
 using PowerModels
 using PowerModelsACDC
 using CbaOPF
-using NEM2000synthetic
+# using NEM2000synthetic
 using JuMP
 using Ipopt
 using Plots
@@ -18,11 +18,12 @@ using StatsBase
 using Statistics
 using JSON
 using Plots
+using HiGHS
 
 # Create short hands for the most important ones
 const _PM = PowerModels
 const _PMACDC = PowerModelsACDC
-const _SNEM = NEM2000synthetic
+# const _SNEM = NEM2000synthetic
 const _PP = PowerPlots
 const _SB = StatsBase
 const _ISP = ISPhvdc
@@ -34,8 +35,8 @@ cd("/Users/hergun/.julia/dev/ISPhvdc")
 scenario = "2022 ISP Step Change"
 # select climate year ∈ [2024:2051]
 year = 2034
-# Number generator contingencies per area 1 = NSW +VIC, 2 = 0, 3 = QLD, 4 = SA, 5 = TAS.
-generator_contingencies = [10 0 5 5 5] 
+# Number generator contingencies per area 1 = NSW, 2 = VIC, 3 = QLD, 4 = SA, 5 = TAS.
+generator_contingencies = [50 30 50 30 20] 
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
@@ -45,7 +46,7 @@ download_data = false
 # State if circiuts and parallel lines should be merged:
 merge_parallel_lines = true
 # Assign solvers
-dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 1.5e-2, "TimeLimit" => 10800) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
+dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 0.5e-2, "TimeLimit" => 900, "mip_focus" => 3) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
 dn_res_factor = 0.0
 t_fcrd = 6.0
 t_fcr = 1.0
@@ -119,7 +120,7 @@ fmin = 49.5
 data["frequency_parameters"] = Dict{String, Any}()
 data["frequency_parameters"]["fmin"] = fmin
 data["frequency_parameters"]["f0"] = 50.0
-data["frequency_parameters"]["fdb"] = 0.1
+data["frequency_parameters"]["fdb"] = 0.2
 data["frequency_parameters"]["fmax"] =  data["frequency_parameters"]["f0"] + ((data["frequency_parameters"]["f0"] - fmin))
 data["frequency_parameters"]["t_fcr"] = t_fcr
 data["frequency_parameters"]["t_fcrd"] = t_fcrd
@@ -146,12 +147,194 @@ for (b, branch) in data["branch"]
 end
 
 # Function to write generator & converter info:
-_ISP.generator_uc_data!(data, fcr_cost = 50)
+_ISP.generator_uc_data!(data, fcr_cost = 20, droop_fac = 1)
 _ISP.converter_uc_data!(data, t_hvdc = t_hvdc, ffr_cost = 20)
 _ISP.define_tie_lines!(data)
-@time mn_data = _ISP.multi_network_uc_data(data, total_demand_series, dn_demand_series, pv_series, wind_series, pv_rez, wind_rez, hours, generator_contingencies, no_dc_cont = false, dn_res_factor = dn_res_factor)
 
-fmin = 49.7:0.1:49.7
-h = join([hours[1],"_", hours[end]])
-_ISP.plot_system_information(mn_data, scenario, "$year", h)
-objective_dc, objective_no_dc, time_dc, time_no_dc = _ISP.batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h; droop = true, extension = extension)
+fmin = 49.5:0.1:49.5
+droop = true
+
+data_dict = Dict()
+data_dict["data"] = data
+data_dict["total_demand_series"] = total_demand_series
+data_dict["dn_demand_series"] = dn_demand_series
+data_dict["pv_series"] =  pv_series
+data_dict["wind_series"] = wind_series
+data_dict["wind_rez"] = wind_rez
+data_dict["pv_rez"] = pv_rez
+data_dict["generator_contingencies"] = generator_contingencies
+data_dict["no_dc_cont"] = false
+data_dict["dn_res_factor"] = dn_res_factor
+data_dict["p2p"] = false
+
+
+objective_dc, objective_no_dc, time_dc, time_no_dc, time_opt_dc, time_opt_no_dc = _ISP.batch_fsopf(data_dict, fmin, dc_solver, scenario, year, hours, h; droop = true, extension = extension)
+
+
+_ISP.get_and_plot_objective_value(fmin, scenario, "$year", h; extension = "_test")
+
+fmin_ = "49.5"
+year_ = "$year"
+
+_ISP.plot_largest_continegncy(scenario, year_, h, fmin_, data_dict, 1:24; extension = extension)
+
+_ISP.plot_calculation_time(fmin, 49.0, scenario, year_, h; extension = extension)
+_ISP.plot_calculation_time(fmin, 49.5, scenario, year_, h; extension = extension)
+_ISP.plot_hvdc_contribution(data_dict, 49.5, scenario, year_, h, 1:24; extension = extension)
+_ISP.plot_hvdc_contribution(data_dict, 49.0, scenario, year_, h, 1:24; extension = extension)
+
+
+
+fn = joinpath("results", scenario, year_, h, join(["solver_time",extension,"_no_dc.json"]))
+t_opt_no_dc = Dict{String, Any}()
+open(fn) do f
+    dicttxt = read(f,String)  # file information to string
+    global t_opt_no_dc = JSON.parse(dicttxt)  # parse and transform data
+end
+
+fn = joinpath("results", scenario, year_, h, join(["f",fmin_,"_test_without_dc.json"]))
+result_dc = Dict{String, Any}()
+open(fn) do f
+dicttxt = read(f,String)  # file information to string
+    global result_dc = JSON.parse(dicttxt)  # parse and transform data
+end
+
+# _ISP.plot_calculation_time(fmin, scenario, year, hours; extension = "_test")
+
+
+
+# Plots.plot(pg')
+# Plots.savefig("results/plot.pdf")
+
+
+# fmin_ = 49.0
+
+# _ISP.plot_load_shedding(data, fmin_, scenario, "$year", h; extension = "_test")
+
+# fmin = 49.7:0.1:49.7
+# h = join([hours[1],"_", hours[end]])
+# _ISP.plot_system_information(mn_data, scenario, "$year", h)
+# objective_dc, objective_no_dc, time_dc, time_no_dc = _ISP.batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h; droop = true, extension = extension)
+# filename = joinpath("results", scenario, y, h, join(["calculation",extension,"_time_dc.json"]))
+# json_string = JSON.json(t_dc)
+# open(filename,"w") do f
+# write(f, json_string)
+# end
+
+# filename = joinpath("results", scenario, y, h, join(["calculation",extension,"_time_no_dc.json"]))
+# json_string = JSON.json(t_no_dc)
+# open(filename,"w") do f
+# write(f, json_string)
+# end
+
+# filename = joinpath("results", scenario, y, h, join(["solver_time",extension,"_dc.json"]))
+# json_string = JSON.json(t_opt_dc)
+# open(filename,"w") do f
+# write(f, json_string)
+# end
+
+# filename = joinpath("results", scenario, y, h, join(["solver_time",extension,"_no_dc.json"]))
+# json_string = JSON.json(t_opt_no_dc)
+# open(filename,"w") do f
+# write(f, json_string)
+# end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# result_no_dc = Dict()
+# result_dc = Dict()
+# t_no_dc = 0
+# t_dc = 0
+# hours_ = hours[1]
+# for hour in hours_
+#     @time mn_data = _ISP.multi_network_uc_data(data, total_demand_series, dn_demand_series, pv_series, wind_series, pv_rez, wind_rez, hour, generator_contingencies, no_dc_cont = false, dn_res_factor = dn_res_factor, p2p = false)
+
+#     fmin = 49.3
+#     _ISP.adjust_minimum_freqeuncy!(mn_data, fmin)
+#     s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => false, "relax_uc_binaries" => true)
+#     global t_no_dc = @elapsed global result_no_dc = CbaOPF.solve_fsuc_droop(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+
+#     s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => true, "relax_uc_binaries" => true)
+#     global t_dc = @elapsed global result_dc = CbaOPF.solve_fsuc_droop(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+# end
+
+# Etot_1 = zeros(1, 24)
+# Etot_5 = zeros(1, 24)
+# Fcrtot_1 = zeros(1, 24)
+# Fcrtot_5 = zeros(1, 24)
+# pmax = zeros(1, 24)
+# for i in 1:length(hours)
+#     idx = (i-1) * 20 + 1 
+#     for (g, gen) in mn_data["nw"]["$idx"]["gen"]
+#         if gen["zone"] !== 5
+#             Etot_1[i] = Etot_1[i] + gen["pmax"] *  gen["inertia_constants"]
+#             Fcrtot_1[i] = Fcrtot_1[i] + gen["ramp_rate_per_s"]
+#         end
+#         if gen["zone"] == 5
+#             Etot_5[i] = Etot_5[i] + gen["pmax"] *  gen["inertia_constants"]
+#             Fcrtot_5[i] = Fcrtot_5[i] + gen["ramp_rate_per_s"]
+#         end
+#     end
+# end
+
+
+
+
+# Plots.plot(Etot_5')
+
+# for (g, gen) in mn_data["nw"]["1"]["gen"]
+#     if gen["zone"] == 5
+#         print(g, " ", gen["pmax"], "\n")
+#     end
+# end
+
+
+# pmax = zeros(1, 372)
+# pg = zeros(1, 372)
+# pg_dc = zeros(1, 372)
+# print("=========", "\n")
+# for (g, gen) in result_no_dc["solution"]["nw"]["1"]["gen"]
+#     pg[parse(Int, g)] = gen["pg"]
+#     pg_dc[parse(Int, g)] = result_dc["solution"]["nw"]["1"]["gen"][g]["pg"]
+#     pmax[parse(Int, g)] = mn_data["nw"]["1"]["gen"][g]["pmax"]
+# end
+# print("=========", "\n")
+# pg_cont = zeros(sum(generator_contingencies))
+# pg_cont_dc = zeros(sum(generator_contingencies))
+# for i in 2:sum(generator_contingencies) + 1 
+#     g = mn_data["nw"]["$i"]["contingency"]["gen_id"]
+#     pg_cont[i-1] = result_no_dc["solution"]["nw"]["1"]["gen"]["$g"]["pg"]
+#     pg_cont_dc[i-1] = result_dc["solution"]["nw"]["1"]["gen"]["$g"]["pg"]
+# end
+
+# gmax = argmax(pg)[2]
+# bus = mn_data["nw"]["1"]["gen"]["$gmax"]["gen_bus"]
+# zone_max = data["bus"]["$bus"]["area"]
+
+# gmax_dc = argmax(pg_dc)[2]
+# bus_dc = mn_data["nw"]["1"]["gen"]["$gmax_dc"]["gen_bus"]
+# zone_max_dc = data["bus"]["$bus_dc"]["area"]
+
+# print("Maximum generation = ", maximum(pg), " in zone ", zone_max, " ,   Largest output in contingency set = ", maximum(pg_cont), "\n")
+# print("Maximum generation = ", maximum(pg_dc), " in zone ", zone_max_dc, " ,   Largest output in contingency set = ", maximum(pg_cont_dc), "\n")
+
+# Plots.plot(pg')
+# Plots.savefig("results/plot.pdf")

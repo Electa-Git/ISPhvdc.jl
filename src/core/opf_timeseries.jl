@@ -146,7 +146,7 @@ function select_hours(year; selection = Dict{String, Any}("all" => true))
 end
 
 
-function multi_network_uc_data(data, total_demand, total_dn_demand, pv_series, wind_series, rez_pv, rez_wind, hours, generator_contingencies; dn_res_factor = 0.5, no_dc_cont = false)
+function multi_network_uc_data(data, total_demand, total_dn_demand, pv_series, wind_series, rez_pv, rez_wind, hours, generator_contingencies; dn_res_factor = 0.5, no_dc_cont = false, p2p = false)
     data["pst"] = Dict{String, Any}()
     number_of_hours = length(hours)
     tie_line_contingencies = length(data["tie_lines"])
@@ -232,7 +232,12 @@ function multi_network_uc_data(data, total_demand, total_dn_demand, pv_series, w
         end
     end
 
-    create_contingencies!(mn_data, generator_contingencies, conv_keys, dc_branch_keys)
+    if p2p == true
+        dc_branch_keys = []
+        create_contingencies!(mn_data, generator_contingencies, conv_keys, dc_branch_keys)
+    else
+        create_contingencies!(mn_data, generator_contingencies, conv_keys, dc_branch_keys)
+    end
 
     for (n, network) in mn_data["nw"]
         network["zones"] = Dict{String, Any}("1" => Dict("source_id" => Any["zones", 1], "zone" => 1, "index" => 1), "2" => Dict("source_id" => Any["zones", 2], "zone" => 5, "index" => 2))
@@ -261,6 +266,7 @@ function multi_network_uc_data(data, total_demand, total_dn_demand, pv_series, w
     for (n, network) in mn_data["nw"]
         if haskey(network, "aggregated_data")
             delete!(network, "aggregated_data")
+            delete!(network, "load_data")
         end
     end
     

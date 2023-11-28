@@ -672,7 +672,7 @@ function merge_branches!(data, b_idx, parallel_br)
 end
 
 
-function generator_uc_data!(data; fcr_cost = 50)
+function generator_uc_data!(data; fcr_cost = 50, droop_fac = 1)
     for (g, gen) in data["gen"]
         gen["fcr_cost"] = fcr_cost * data["baseMVA"] / (3600 / data["frequency_parameters"]["t_fcrd"])  # 
         bus_id = gen["gen_bus"]
@@ -698,12 +698,12 @@ function generator_uc_data!(data; fcr_cost = 50)
                 cost_var = gen["variable_op_cost(dollar/MWh_sent_out)"] * data["baseMVA"]
                 cost_fixed = (gen[ "noload_cost(dollar/MW/year)"] + gen["noload_recurring_cost(dollar/MW/year)"] + gen["fixed_op_cost(dollar/MW/year)"]) * gen["pmax"] * data["baseMVA"] / (8760 / data["frequency_parameters"]["uc_time_interval"])
                 gen["cost"] = [cost_var cost_fixed]
-                gen["ramp_rate_per_s"] =   (gen["Ramp_Up_Rate(MW/h)"] / data["baseMVA"] / 3600)
+                gen["ramp_rate_per_s"] =   (gen["Ramp_Up_Rate(MW/h)"] / data["baseMVA"] / 3600) * droop_fac
                 gen["fcr_contribution"] = true
             else
                 gen["ramp_rate"] = 1.0
-                gen["ramp_rate_per_s"] =   0.0#(gen["pmax"] / 3600)
-                gen["fcr_contribution"] = false
+                gen["ramp_rate_per_s"] =   gen["pmax"] / 3600  * droop_fac
+                gen["fcr_contribution"] = true
                 gen["mdt"] = Int(1 / data["frequency_parameters"]["uc_time_interval"])
                 gen["mut"] = Int(1 / data["frequency_parameters"]["uc_time_interval"])
             end

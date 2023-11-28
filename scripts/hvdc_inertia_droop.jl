@@ -45,7 +45,7 @@ download_data = false
 # State if circiuts and parallel lines should be merged:
 merge_parallel_lines = true
 # Assign solvers
-dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 1.5e-2, "TimeLimit" => 7200) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
+dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 1.5e-2, "TimeLimit" => 10800) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
 dn_res_factor = 0.0
 t_fcrd = 6.0
 t_fcr = 1.0

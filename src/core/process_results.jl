@@ -145,29 +145,29 @@ function get_and_plot_objective_value(fmin, scenario, year, hours; extension = "
     return objective_dc, objective_no_dc
 end
 
-function plot_calculation_time(fmin, scenario, year, hours)
-    fn = joinpath("results", scenario, year, hours, join(["calculation_time_dc.json"]))
+function plot_calculation_time(fmin, scenario, year, hours; extension = "")
+    fn = joinpath("results", scenario, year, hours, join(["calculation",extension,"_time_dc.json"]))
     time_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string
         time_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["calculation_time_no_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["calculation",extension,"_time_no_dc.json"]))
     time_no_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string
         time_no_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["solver_time_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["solver",extension,"_time_dc.json"]))
     t_opt_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string
         t_opt_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["solver_time_no_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["solver",extension,"_time_no_dc.json"]))
     t_opt_no_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string
@@ -221,37 +221,56 @@ function load_input_data(scenario, year, hours)
     return input_data
 end
 
-function plot_load_shedding(input_data, fmin, scenario, year, hours)
+function plot_load_shedding(input_data, fmin, scenario, year, hours; extension = "")
+
     print("Loading results", "\n")
-    fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_with_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["f",fmin,extension,"_with_dc.json"]))
     result_dc = Dict{String, Any}()
     open(fn) do f
     dicttxt = read(f,String)  # file information to string
         result_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_without_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["f",fmin, extension,"_without_dc.json"]))
     result_no_dc = Dict{String, Any}()
     open(fn) do f
     dicttxt = read(f,String)  # file information to string
         result_no_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    hour_ids = input_data["hour_ids"]
+    if haskey(input_data, "hour_ids")
+        hour_ids = input_data["hour_ids"]
+    else
+        hour_ids = sort(collect(parse.(Int,keys(result_dc["solution"]["nw"]))))
+    end
 
     ls_no_dc = zeros(length(hour_ids), 4)
     ls_dc = zeros(length(hour_ids), 4)
 
-    baseMVA = input_data["nw"]["1"]["baseMVA"]
+    if haskey(input_data, "baseMVA")
+        baseMVA = input_data["baseMVA"]
+    else
+        baseMVA = input_data["nw"]["1"]["baseMVA"]
+    end
+
+
 
     print("Determining demand shedding", "\n")
     for idx in 1:length(hour_ids)
         hour = hour_ids[idx]
-
-        res_no_dc = result_no_dc["solution"]["nw"]["$hour"]
+        if !haskey(result_no_dc["solution"]["nw"]["$hour"], "nw")
+            res_no_dc = result_no_dc["solution"]["nw"]["$hour"]
+        else
+            res_no_dc = result_no_dc["solution"]["nw"]["$hour"]["nw"]["1"]
+        end
         for (l, load) in res_no_dc["load"]
-            load_bus = input_data["nw"]["1"]["load"][l]["load_bus"]
-            area = input_data["nw"]["1"]["bus"]["$load_bus"]["area"]
+            if haskey(input_data, "load")
+                load_bus = input_data["load"][l]["load_bus"]
+                area = input_data["bus"]["$load_bus"]["area"]
+            else
+                load_bus = input_data["nw"]["1"]["load"][l]["load_bus"]
+                area = input_data["nw"]["1"]["bus"]["$load_bus"]["area"]
+            end
             if area == 1
                 ls_no_dc[idx, 1] = ls_no_dc[idx, 1]+ load["pcurt"] * baseMVA
             elseif area == 3
@@ -263,10 +282,19 @@ function plot_load_shedding(input_data, fmin, scenario, year, hours)
             end
         end
 
-        res_dc = result_dc["solution"]["nw"]["$hour"]
+        if !haskey(result_dc["solution"]["nw"]["$hour"], "nw")
+            res_dc = result_dc["solution"]["nw"]["$hour"]
+        else
+            res_dc = result_dc["solution"]["nw"]["$hour"]["nw"]["1"]
+        end
         for (l, load) in res_dc["load"]
-            load_bus = input_data["nw"]["1"]["load"][l]["load_bus"]
-            area = input_data["nw"]["1"]["bus"]["$load_bus"]["area"]
+            if haskey(input_data, "load")
+                load_bus = input_data["load"][l]["load_bus"]
+                area = input_data["bus"]["$load_bus"]["area"]
+            else
+                load_bus = input_data["nw"]["1"]["load"][l]["load_bus"]
+                area = input_data["nw"]["1"]["bus"]["$load_bus"]["area"]
+            end
             if area == 1
                 ls_dc[idx, 1] = ls_dc[idx, 1]+ load["pcurt"] * baseMVA
             elseif area == 3
@@ -289,7 +317,7 @@ function plot_load_shedding(input_data, fmin, scenario, year, hours)
         xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_without_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_without_dc_f",fmin,extension,".pdf"]))
     StatsPlots.savefig(p_no_dc, plot_filename)
 
     legend = repeat(["NSW + VIC with dc", "QLD with dc", "SA with dc", "TAS with dc"], inner = length(hour_ids))
@@ -299,7 +327,7 @@ function plot_load_shedding(input_data, fmin, scenario, year, hours)
         xlabel = "\$hour~id\$", ylabel = "\$P^{curt}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_with_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours, join(["demand_shedding_with_dc_f",fmin,extension,".pdf"]))
     StatsPlots.savefig(p_dc, plot_filename)
 
 
@@ -509,23 +537,21 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
 end
 
 
-function plot_total_inertia(input_data, fmin, scenario, year, hours)
+function plot_total_inertia(input_data, fmin, scenario, year, hours, extension = "")
     print("Loading results", "\n")
-    fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_with_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["f",fmin,extension,"_with_dc.json"]))
     result_dc = Dict{String, Any}()
     open(fn) do f
     dicttxt = read(f,String)  # file information to string
         result_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_without_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["f",fmin,extension,"_without_dc.json"]))
     result_no_dc = Dict{String, Any}()
     open(fn) do f
     dicttxt = read(f,String)  # file information to string
         result_no_dc = JSON.parse(dicttxt)  # parse and transform data
     end
-
-    hour_ids = input_data["hour_ids"]
 
     in_no_dc = zeros(length(hour_ids), 4)
     in_dc = zeros(length(hour_ids), 4)
@@ -535,8 +561,6 @@ function plot_total_inertia(input_data, fmin, scenario, year, hours)
     print("Determining inertia", "\n")
     for idx in 1:length(hour_ids)
         hour = hour_ids[idx]
-
-        res_no_dc = result_no_dc["solution"]["nw"]["$hour"]
         for (g, gen) in res_no_dc["gen"]
             gen_bus = input_data["nw"]["1"]["gen"][g]["gen_bus"]
             area = input_data["nw"]["1"]["bus"]["$gen_bus"]["area"]
@@ -693,6 +717,7 @@ function plot_tie_line_flows(input_data, fmin, scenario, year, hours)
 end
 
 
+
 # function plot_tie_line_flows(input_data, fmin, scenario, year, hours)
 #     print("Loading results", "\n")
 #     fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_with_dc.json"]))
@@ -833,6 +858,234 @@ function plot_hvdc_contribution(input_data, fmin_, scenario, year, hours)
     plot_filename = joinpath("results", scenario, year, hours, join(["worst_case_hvdc_contributions.pdf"]))
     Plots.savefig(p_in_hvdc, plot_filename)
 end
+
+
+function plot_largest_continegncy(scenario, year, h_, fmin, data_dict, hours; extension = extension)
+
+    data = data_dict["data"]
+    total_demand_series = data_dict["total_demand_series"] 
+    dn_demand_series = data_dict["dn_demand_series"]
+    pv_series = data_dict["pv_series"]
+    wind_series = data_dict["wind_series"]
+    wind_rez = data_dict["wind_rez"]
+    pv_rez = data_dict["pv_rez"]
+    generator_contingencies = data_dict["generator_contingencies"] 
+    no_dc_cont = data_dict["no_dc_cont"]
+    dn_res_factor = data_dict["dn_res_factor"]
+    p2p = data_dict["p2p"] 
+
+    fn = joinpath("results", scenario, year, h_, join(["f",fmin,"_test_with_dc.json"]))
+    result_dc = Dict{String, Any}()
+    open(fn) do f
+    dicttxt = read(f,String)  # file information to string
+        result_dc = JSON.parse(dicttxt)  # parse and transform data
+    end
+
+    fn = joinpath("results",scenario, year, h_, join(["f",fmin,"_test_without_dc.json"]))
+    result_no_dc = Dict{String, Any}()
+    open(fn) do f
+    dicttxt = read(f,String)  # file information to string
+        result_no_dc = JSON.parse(dicttxt)  # parse and transform data
+    end
+
+
+
+    pmax = zeros(1, 372)
+    pg = zeros(1, 372)
+    pg_dc = zeros(1, 372)
+    print("=========", "\n")
+    idx = 1
+    pg_cont_h = zeros(1, length(hours))
+    pg_cont_dc_h = zeros(1, length(hours))
+    for h in hours
+        mn_data = multi_network_uc_data(data, total_demand_series, dn_demand_series, pv_series, wind_series, pv_rez, wind_rez, h, generator_contingencies, no_dc_cont = no_dc_cont, dn_res_factor = dn_res_factor, p2p = p2p)
+        for (g, gen) in result_no_dc["solution"]["nw"]["$h"]["nw"]["1"]["gen"]
+            pg[parse(Int, g)] = gen["pg"]
+            pg_dc[parse(Int, g)] = result_dc["solution"]["nw"]["$h"]["nw"]["1"]["gen"][g]["pg"]
+            pmax[parse(Int, g)] = mn_data["nw"]["1"]["gen"][g]["pmax"]
+        end
+        pg_cont = zeros(sum(generator_contingencies))
+        pg_cont_dc = zeros(sum(generator_contingencies))
+        for i in 2:sum(generator_contingencies) + 1
+            g = mn_data["nw"]["$i"]["contingency"]["gen_id"]
+            pg_cont[i-1] = result_no_dc["solution"]["nw"]["$h"]["nw"]["1"]["gen"]["$g"]["pg"]
+            pg_cont_dc[i-1] = result_dc["solution"]["nw"]["$h"]["nw"]["1"]["gen"]["$g"]["pg"]
+        end
+
+        gmax = argmax(pg)[2]
+        bus = mn_data["nw"]["1"]["gen"]["$gmax"]["gen_bus"]
+        zone_max = data["bus"]["$bus"]["area"]
+
+        gmax_dc = argmax(pg_dc)[2]
+        bus_dc = mn_data["nw"]["1"]["gen"]["$gmax_dc"]["gen_bus"]
+        zone_max_dc = data["bus"]["$bus_dc"]["area"]
+
+        print("Hour ", h, " -> Maximum generation = ", maximum(pg), " in zone ", zone_max, " ,   Largest output in contingency set no dc= ", maximum(pg_cont), "\n")
+        print("Hour ", h, " -> Maximum generation = ", maximum(pg_dc), " in zone ", zone_max_dc, " ,   Largest output in contingenc set with dc = ", maximum(pg_cont_dc), "\n")
+
+        pg_cont_h[idx] = maximum(pg_cont) * data["baseMVA"]
+        pg_cont_dc_h[idx] = maximum(pg_cont_dc) * data["baseMVA"]
+        idx = idx + 1
+    end
+
+    p1 = Plots.plot(hours, pg_cont_h', marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$MW\$", label = "without HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    Plots.plot!(p1, hours, pg_cont_dc_h', marker = :diamond,  xlabel = "\$hour~id\$", ylabel = "\$MW\$", label = "with HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    plot_filename = joinpath("results", scenario, year, h_, join(["max_continegncies_", fmin ,extension,".pdf"]))
+    Plots.savefig(p1, plot_filename)
+end
+
+
+function plot_calculation_time(fmin, fmin_::Float64, scenario::String, year::String, hours::String; extension = "")
+    fn = joinpath("results", scenario, year, hours, join(["calculation",extension,"_time_dc.json"]))
+    time_dc = Dict{String, Any}()
+    open(fn) do f
+        dicttxt = read(f,String)  # file information to string
+        time_dc = JSON.parse(dicttxt)  # parse and transform data
+    end
+
+    fn = joinpath("results", scenario, year, hours, join(["calculation",extension,"_time_no_dc.json"]))
+    time_no_dc = Dict{String, Any}()
+    open(fn) do f
+        dicttxt = read(f,String)  # file information to string
+        time_no_dc = JSON.parse(dicttxt)  # parse and transform data
+    end
+
+    fn = joinpath("results", scenario, year, hours, join(["solver_time",extension,"_dc.json"]))
+    t_opt_dc = Dict{String, Any}()
+    open(fn) do f
+        dicttxt = read(f,String)  # file information to string
+        t_opt_dc = JSON.parse(dicttxt)  # parse and transform data
+    end
+
+    fn = joinpath("results", scenario, year, hours, join(["solver_time",extension,"_no_dc.json"]))
+    t_opt_no_dc = Dict{String, Any}()
+    open(fn) do f
+        dicttxt = read(f,String)  # file information to string
+        t_opt_no_dc = JSON.parse(dicttxt)  # parse and transform data
+    end
+
+    f_idx = findall(fmin .== fmin_)[1]
+
+    if isempty(f_idx)
+        print("Input frequency nor found in the range of results", "\n")
+    else
+
+        t_dc = time_dc["$f_idx"]
+        t_no_dc = time_no_dc["$f_idx"]
+
+        ts_dc = t_opt_dc["$f_idx"]
+        ts_no_dc = t_opt_no_dc["$f_idx"]
+
+        hours_ = sort(collect(parse.(Int, keys(t_dc))))
+        tt_dc = zeros(1, length(hours_))
+        tt_no_dc = zeros(1, length(hours_))
+        tts_dc = zeros(1, length(hours_))
+        tts_no_dc = zeros(1, length(hours_))
+
+        for h in 1:length(hours_)
+
+            tt_dc[h] =  t_dc["$h"]
+            tt_no_dc[h] =  t_no_dc["$h"]
+
+            tts_dc[h] =  ts_dc["$h"]
+            print(h, "\n")
+            print(ts_no_dc["$h"], "\n")
+            tts_no_dc[h] =  ts_no_dc["$h"]
+        end
+
+        p1 = Plots.plot(hours_, tt_no_dc', marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$T_{comp}~in~s\$", label = "without HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+        Plots.plot!(p1, hours_, tt_dc', marker = :diamond,  xlabel = "\$hour~id\$", ylabel = "\$T_{comp}~in~s\$", label = "with HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+        plot_filename = joinpath("results", scenario, year, hours, join(["time_comparison_", "$fmin_" ,extension,".pdf"]))
+        Plots.savefig(p1, plot_filename)
+
+        p2 = Plots.plot(hours_, tts_no_dc', marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$T_{solve}~in~s\$", label = "without HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+        Plots.plot!(p2, hours_, tts_dc', marker = :diamond,  xlabel = "\$hour~id\$", ylabel = "\$T_{solve}~in~s\$", label = "with HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+        plot_filename = joinpath("results", scenario, year, hours, join(["time_comparison_solver_", "$fmin_" ,extension,".pdf"]))
+        Plots.savefig(p1, plot_filename)
+    end
+end
+
+
+function plot_hvdc_contribution(data_dict, fmin_, scenario, year, hour_string::String, hour_ids; extension = "")
+    p_in_hvdc = Plots.plot()
+
+    data = data_dict["data"]
+    total_demand_series = data_dict["total_demand_series"] 
+    dn_demand_series = data_dict["dn_demand_series"]
+    pv_series = data_dict["pv_series"]
+    wind_series = data_dict["wind_series"]
+    wind_rez = data_dict["wind_rez"]
+    pv_rez = data_dict["pv_rez"]
+    generator_contingencies = data_dict["generator_contingencies"] 
+    no_dc_cont = data_dict["no_dc_cont"]
+    dn_res_factor = data_dict["dn_res_factor"]
+    p2p = data_dict["p2p"] 
+
+
+
+    for fmin in fmin_
+        print("Loading results", "\n")
+        fn = joinpath("results", scenario, year, hour_string, join(["f", fmin, extension,"_with_dc.json"]))
+        result_dc = Dict{String, Any}()
+        open(fn) do f
+        dicttxt = read(f,String)  # file information to string
+            result_dc = JSON.parse(dicttxt)  # parse and transform data
+        end
+
+        number_of_continegcnies = Int(1 + sum(generator_contingencies) + length(data["tie_lines"]) + (length(data["convdc"]) + length(data["branchdc"]))/2)
+
+        in_dc = zeros(length(hour_ids), number_of_continegcnies)
+
+        baseMVA = data["baseMVA"]
+
+        print("Determining inertia", "\n")
+        for idx in 1:length(hour_ids)
+            hour = hour_ids[idx]
+            input_data = multi_network_uc_data(data, total_demand_series, dn_demand_series, pv_series, wind_series, pv_rez, wind_rez, hour, generator_contingencies, no_dc_cont = no_dc_cont, dn_res_factor = dn_res_factor, p2p = p2p)
+            conts = collect(1:(number_of_continegcnies - 1))
+            for jdx in 1:length(conts)
+                cont = conts[jdx]
+                in_dc[idx, jdx] = sum([conv["pconv_in_abs"] for (c, conv)  in  result_dc["solution"]["nw"]["$hour"]["nw"]["$cont"]["convdc"]]) * baseMVA / 1e3
+                if in_dc[idx, jdx] !== 0.0
+                    cont_name = input_data["nw"]["$cont"]["contingency"]
+                    if !isnothing(cont_name["gen_id"])
+                        gen_id = cont_name["gen_id"]
+                        cont_mw = result_dc["solution"]["nw"]["$hour"]["nw"]["1"]["gen"]["$gen_id"]["pg"] * baseMVA
+                        cont_string = join(["generator ", gen_id, " with ", cont_mw, " MW"])
+                    elseif !isnothing(cont_name["conv_id"])
+                        conv_id = cont_name["conv_id"]
+                        cont_mw = result_dc["solution"]["nw"]["$hour"]["nw"]["1"]["convdc"]["$conv_id"]["pgrid"] * baseMVA
+                        cont_string = join(["converter ", conv_id, " with ", cont_mw, " MW"])
+                    elseif !isnothing(cont_name["branch_id"])
+                        branch_id = input_data["nw"]["$hour"]["tie_lines"]["$(cont_name["branch_id"])"]["br_idx"]
+                        cont_mw = result_dc["solution"]["nw"]["$hour"]["nw"]["1"]["branch"]["$branch_id"]["pf"] * baseMVA
+                        cont_string = join(["tie line ", branch_id, " with ", cont_mw, " MW"])
+                    elseif !isnothing(cont_name["dcbranch_id"])
+                        dcbranch_id = cont_name["dcbranch_id"]
+                        cont_mw = result_dc["solution"]["nw"]["$hour"]["nw"]["1"]["branchdc"]["$dcbranch_id"]["pf"] * baseMVA
+                        cont_string = join(["dc line ", dcbranch_id, " with ", cont_mw, " MW"])
+                    end
+                    print("hour: ", idx, " contingency: ", cont_string, " dc contr = ", in_dc[idx, jdx], " GWs", "\n")
+                end
+            end
+        end
+        in_dc_p = maximum(in_dc, dims = 2)
+        f = join(["\$f_{min} = \$", fmin, " Hz"])
+        if length(fmin) == 1
+            Plots.plot!(p_in_hvdc, 1:length(hour_ids), in_dc_p[:, 1], linestyle = :dash, linecolor = :black, marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", label = f, xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+        else
+            Plots.plot!(p_in_hvdc, 1:length(hour_ids), in_dc_p[:, 1], xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", label = f, xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+        end
+    end
+    # p_in_hvdc = Plots.plot(1:length(hour_ids), in_dc_p[:, 1], linestyle = :dash, linecolor = :black, marker = :diamond, markercolor = :black, xlabel = "\$hour~id\$", ylabel = "\$E^{dc}~in~GWs\$", legend = false))
+    plot_filename = joinpath("results", scenario, year, hour_string, join(["$fmin_", "_worst_case_hvdc_contributions.pdf"]))
+    Plots.savefig(p_in_hvdc, plot_filename)
+end
+
+
+
+
+
 
 # function create_calc_time(fmin, scenario, year, hours)
 #     t_opt_dc = Dict{String, Any}(["$i"=>[] for i in 1:length(fmin)])
