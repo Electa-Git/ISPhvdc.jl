@@ -40,7 +40,7 @@ generator_contingencies = [50 30 50 30 20]
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:2:48) #8737:2:8784
+selected_hours = Dict{String, Any}("hour_range" => 1:1:2) #8737:2:8784
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # State if circiuts and parallel lines should be merged:
@@ -125,6 +125,7 @@ data["frequency_parameters"]["fmax"] =  data["frequency_parameters"]["f0"] + ((d
 data["frequency_parameters"]["t_fcr"] = t_fcr
 data["frequency_parameters"]["t_fcrd"] = t_fcrd
 data["frequency_parameters"]["uc_time_interval"] = 1.0 # hours
+data["frequency_parameters"]["delta_fss"] = 0.2
 
 
 h = join([hours[1],"_", hours[end]])
@@ -151,7 +152,7 @@ _ISP.generator_uc_data!(data, fcr_cost = 20, droop_fac = 1)
 _ISP.converter_uc_data!(data, t_hvdc = t_hvdc, ffr_cost = 20)
 _ISP.define_tie_lines!(data)
 
-fmin = 49.5:0.1:49.5
+fmin = 49.0:0.1:49.0
 droop = true
 
 data_dict = Dict()
@@ -173,15 +174,15 @@ objective_dc, objective_no_dc, time_dc, time_no_dc, time_opt_dc, time_opt_no_dc 
 
 _ISP.get_and_plot_objective_value(fmin, scenario, "$year", h; extension = "_test")
 
-fmin_ = "49.5"
+fmin_ = "49.0"
 year_ = "$year"
 
-_ISP.plot_largest_continegncy(scenario, year_, h, fmin_, data_dict, 1:24; extension = extension)
+_ISP.plot_largest_continegncy(scenario, year_, h, fmin_, data_dict, 1:length(hours); extension = extension)
 
 _ISP.plot_calculation_time(fmin, 49.0, scenario, year_, h; extension = extension)
 _ISP.plot_calculation_time(fmin, 49.5, scenario, year_, h; extension = extension)
-_ISP.plot_hvdc_contribution(data_dict, 49.5, scenario, year_, h, 1:24; extension = extension)
-_ISP.plot_hvdc_contribution(data_dict, 49.0, scenario, year_, h, 1:24; extension = extension)
+_ISP.plot_hvdc_contribution(data_dict, 49.5, scenario, year_, h, 1:length(hours); extension = extension)
+_ISP.plot_hvdc_contribution(data_dict, 49.0, scenario, year_, h, 1:length(hours); extension = extension)
 
 
 

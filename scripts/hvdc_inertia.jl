@@ -4,7 +4,6 @@ using ISPhvdc
 using PowerModels
 using PowerModelsACDC
 using CbaOPF
-using NEM2000synthetic
 using JuMP
 using Ipopt
 using Plots
@@ -22,7 +21,6 @@ using Plots
 # Create short hands for the most important ones
 const _PM = PowerModels
 const _PMACDC = PowerModelsACDC
-const _SNEM = NEM2000synthetic
 const _PP = PowerPlots
 const _SB = StatsBase
 const _ISP = ISPhvdc
