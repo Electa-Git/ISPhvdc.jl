@@ -4,7 +4,6 @@ using ISPhvdc
 using PowerModels
 using PowerModelsACDC
 using CbaOPF
-using NEM2000synthetic
 using JuMP
 using Ipopt
 using Plots
@@ -21,7 +20,6 @@ using JSON
 # Create short hands for the most important ones
 const _PM = PowerModels
 const _PMACDC = PowerModelsACDC
-const _SNEM = NEM2000synthetic
 const _PP = PowerPlots
 const _SB = StatsBase
 const _ISP = ISPhvdc
@@ -29,10 +27,10 @@ cd("/Users/hergun/.julia/dev/ISPhvdc")
 ######################################
 scenario = "2022 ISP Step Change"
 year = "2034"
-hours = "1_2"
+hours = "1_47"
 #hours = "8737_8783"
 fmin = 49.7:0.1:49.7
-extension = "_test"
+extension = "_rd"
 
 input_data = _ISP.load_input_data(scenario, year, hours)
 _ISP.plot_system_information(input_data, scenario, year, hours)

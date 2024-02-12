@@ -874,14 +874,14 @@ function plot_largest_continegncy(scenario, year, h_, fmin, data_dict, hours; ex
     dn_res_factor = data_dict["dn_res_factor"]
     p2p = data_dict["p2p"] 
 
-    fn = joinpath("results", scenario, year, h_, join(["f",fmin,"_test_with_dc.json"]))
+    fn = joinpath("results", scenario, year, h_, join(["f",fmin, extension,"_with_dc.json"]))
     result_dc = Dict{String, Any}()
     open(fn) do f
     dicttxt = read(f,String)  # file information to string
         result_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results",scenario, year, h_, join(["f",fmin,"_test_without_dc.json"]))
+    fn = joinpath("results",scenario, year, h_, join(["f",fmin, extension, "_without_dc.json"]))
     result_no_dc = Dict{String, Any}()
     open(fn) do f
     dicttxt = read(f,String)  # file information to string

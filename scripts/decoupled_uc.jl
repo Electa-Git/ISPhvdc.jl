@@ -46,12 +46,12 @@ download_data = false
 # State if circiuts and parallel lines should be merged:
 merge_parallel_lines = true
 # Assign solvers
-dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 0.5e-2, "TimeLimit" => 900, "mip_focus" => 3) #  https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
+dc_solver =  JuMP.optimizer_with_attributes(Gurobi.Optimizer, "MIPGap" => 0.5e-2, "TimeLimit" => 900) # "mip_focus" => 3 https://www.gurobi.com/documentation/current/refman/method.html#parameter:Method 
 dn_res_factor = 0.0
 t_fcrd = 6.0
 t_fcr = 1.0
 t_hvdc = 0.5
-extension = "_test"
+extension = "_rd"
 ############ END INPUT SECTION ##############################
 #############################################################
 
@@ -152,7 +152,7 @@ _ISP.generator_uc_data!(data, fcr_cost = 20, droop_fac = 1)
 _ISP.converter_uc_data!(data, t_hvdc = t_hvdc, ffr_cost = 20)
 _ISP.define_tie_lines!(data)
 
-fmin = 49.0:0.1:49.0
+fmin = 49.0:0.1:49.7
 droop = true
 
 data_dict = Dict()
@@ -172,3 +172,18 @@ data_dict["p2p"] = false
 @time mn_data = _ISP.multi_network_uc_data_no_cont(data, total_demand_series, dn_demand_series, pv_series, wind_series, pv_rez, wind_rez, hours; dn_res_factor = dn_res_factor)
 
 @elapsed r_uc = CbaOPF.solve_uc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+
+objective_dc, objective_no_dc, time_dc, time_no_dc, time_opt_dc, time_opt_no_dc = _ISP.batch_fsrdopf(data_dict, fmin, dc_solver, scenario, year, hours, h, r_uc; droop = true, extension = extension)
+
+_ISP.get_and_plot_objective_value(fmin, scenario, "$year", h; extension = extension)
+
+year_ = "$year"
+
+_ISP.plot_largest_continegncy(scenario, year_, h, "49.0", data_dict, 1:length(hours); extension = extension)
+_ISP.plot_largest_continegncy(scenario, year_, h, "49.5", data_dict, 1:length(hours); extension = extension)
+
+_ISP.plot_calculation_time(fmin, 49.0, scenario, year_, h; extension = extension)
+_ISP.plot_calculation_time(fmin, 49.5, scenario, year_, h; extension = extension)
+_ISP.plot_hvdc_contribution(data_dict, 49.5, scenario, year_, h, 1:length(hours); extension = extension)
+_ISP.plot_hvdc_contribution(data_dict, 49.0, scenario, year_, h, 1:length(hours); extension = extension)
+
