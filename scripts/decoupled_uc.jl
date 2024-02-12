@@ -40,7 +40,7 @@ generator_contingencies = [50 30 50 30 20]
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:2:48) #8737:2:8784
+selected_hours = Dict{String, Any}("hour_range" => 1:1:4) #8737:2:8784
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # State if circiuts and parallel lines should be merged:
@@ -51,7 +51,7 @@ dn_res_factor = 0.0
 t_fcrd = 6.0
 t_fcr = 1.0
 t_hvdc = 0.5
-extension = "_rd"
+extension = "_rd_reserves"
 ############ END INPUT SECTION ##############################
 #############################################################
 
@@ -63,7 +63,7 @@ if download_data == true
 end
 
 # Optimisation settings for CbaOPF.jl
-s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
+s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "uc_reserves" => true)
 
 # Test case data
 data_folder = joinpath("data")
