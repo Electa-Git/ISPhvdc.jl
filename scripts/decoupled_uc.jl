@@ -40,7 +40,7 @@ generator_contingencies = [50 30 50 30 20]
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 1:1:4) #8737:2:8784
+selected_hours = Dict{String, Any}("hour_range" => 1:2:48) #8737:2:8784
 # State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
 download_data = false
 # State if circiuts and parallel lines should be merged:
@@ -51,7 +51,7 @@ dn_res_factor = 0.0
 t_fcrd = 6.0
 t_fcr = 1.0
 t_hvdc = 0.5
-extension = "_rd_reserves"
+extension = "_rd_reserves_fdb"
 ############ END INPUT SECTION ##############################
 #############################################################
 
@@ -120,7 +120,7 @@ fmin = 49.5
 data["frequency_parameters"] = Dict{String, Any}()
 data["frequency_parameters"]["fmin"] = fmin
 data["frequency_parameters"]["f0"] = 50.0
-data["frequency_parameters"]["fdb"] = 0.2
+data["frequency_parameters"]["fdb"] = 0.1
 data["frequency_parameters"]["fmax"] =  data["frequency_parameters"]["f0"] + ((data["frequency_parameters"]["f0"] - fmin))
 data["frequency_parameters"]["t_fcr"] = t_fcr
 data["frequency_parameters"]["t_fcrd"] = t_fcrd
@@ -184,6 +184,6 @@ _ISP.plot_largest_continegncy(scenario, year_, h, "49.5", data_dict, 1:length(ho
 
 _ISP.plot_calculation_time(fmin, 49.0, scenario, year_, h; extension = extension)
 _ISP.plot_calculation_time(fmin, 49.5, scenario, year_, h; extension = extension)
-_ISP.plot_hvdc_contribution(data_dict, 49.5, scenario, year_, h, 1:length(hours); extension = extension)
 _ISP.plot_hvdc_contribution(data_dict, 49.0, scenario, year_, h, 1:length(hours); extension = extension)
+_ISP.plot_hvdc_contribution(data_dict, 49.5, scenario, year_, h, 1:length(hours); extension = extension)
 
