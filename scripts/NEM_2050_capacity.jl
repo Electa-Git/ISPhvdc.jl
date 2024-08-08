@@ -37,8 +37,8 @@ year = 2034
 # You can choose select certain hours or a full year for the analysis: 
 # selected_hours = Dict{String, Any}("hour_range" => start hour:end hour)
 # selected_hours = Dict{String, Any}("all")
-selected_hours = Dict{String, Any}("hour_range" => 368:1:368)
-# State if data ISP should be downloaded, only necessary for the first time, takes about 3 minutes!
+selected_hours = Dict{String, Any}("hour_range" => 21:1:30)
+# State if data ISP should be downloaded, o nly necessary for the first time, takes about 3 minutes!
 download_data = false
 # Select OPF method opf ∈ {"AC", "DC", "LPAC", "SOC"}
 opf = "DC"
@@ -124,7 +124,7 @@ total_gen_capacity = []
 hourly_data = deepcopy(opf_data)
 
 for (b, branch) in hourly_data["branch"]
-    branch["delta_cap_max"] = branch["rate_a"] * 2 # for testing.....
+    branch["delta_cap_max"] = branch["rate_a"] * 10 # for testing.....
     branch["capacity_cost"] = 150e4 * hourly_data["baseMVA"] / (25 * 8760) # for testing, update with more realistic numbers.....
 end
 
@@ -140,6 +140,7 @@ hourly_data["frequency_parameters"]["fmax"] =  hourly_data["frequency_parameters
 hourly_data["frequency_parameters"]["t_fcr"] = 0.1
 hourly_data["frequency_parameters"]["t_fcrd"] = 6.0
 hourly_data["frequency_parameters"]["uc_time_interval"] = 1.0 # hours
+hourly_data["storage"] = Dict{String, Any}()
 
 # Select hours
 hours = _ISP.select_hours(year, selection = selected_hours)
@@ -167,6 +168,7 @@ if !isdir(joinpath("results", scenario))
     mkdir(joinpath("results", scenario))
 end
 if !isdir(joinpath("results", scenario, y))
+    
     mkdir(joinpath("results", scenario, y))
 end
 if !isdir(joinpath("results", scenario, y, h))

@@ -254,6 +254,11 @@ function multi_network_uc_data(data, total_demand, total_dn_demand, pv_series, w
             elseif bus["area"] == 2
                 bus["area"] = 1
             end
+            if any(b .== ["211" "636" "349" "588" "489" "587" "585"])
+                bus["area"] = 3
+            elseif b == "986"
+                bus["area"] = 4
+            end
         end
         for (c, conv) in network["convdc"]
             conv_bus = conv["busac_i"]
@@ -549,6 +554,11 @@ function multi_network_uc_data_no_cont(data, total_demand, total_dn_demand, pv_s
             elseif bus["area"] == 2
                 bus["area"] = 1
             end
+            if any(b .== ["211" "636" "349" "588" "489" "587" "585"])
+                bus["area"] = 3
+            elseif b == "986"
+                bus["area"] = 4
+            end
         end
         for (c, conv) in network["convdc"]
             conv_bus = conv["busac_i"]
@@ -682,6 +692,11 @@ function multi_network_uc_data(data, uc_data, hours, generator_contingencies, uc
             elseif bus["area"] == 2
                 bus["area"] = 1
             end
+            if any(b .== ["211" "636" "349" "588" "489" "587" "585"])
+                bus["area"] = 3
+            elseif b == "986"
+                bus["area"] = 4
+            end
         end
         for (c, conv) in network["convdc"]
             conv_bus = conv["busac_i"]
@@ -697,6 +712,137 @@ function multi_network_uc_data(data, uc_data, hours, generator_contingencies, uc
         end
     end
 
+    for (n, network) in mn_data["nw"]
+        if haskey(network, "aggregated_data")
+            delete!(network, "aggregated_data")
+            delete!(network, "load_data")
+        end
+    end
+    
+    return mn_data
+end
+
+function multi_network_uc_data_lean(data, total_demand, total_dn_demand, pv_series, wind_series, rez_pv, rez_wind, hours; dn_res_factor = 0.5, no_dc_cont = false, p2p = false, uc_result = nothing, uc_hour = nothing)
+    data["pst"] = Dict{String, Any}()
+    number_of_hours = length(hours) 
+
+    # N-0 
+    # 3 * number of zones as Gen, Conv and Storage go with zones,there are two zones 
+    # 1 * number af oareas as tieline contingencies with areas, there are four areas 
+    number_of_contingencies = 1 + 3 * 2 + 1 * 4 # to also add the N case
+
+
+    # This for loop determines which "network" belongs to an hour, and which to a contingency, for book-keeping of the network ids
+    # Format: [h1, c1 ... cn, h2, c1 ... cn, .... , hn, c1 ... cn]
+    hour_ids = [];
+    cont_ids = [];
+    for i in 1:number_of_hours * number_of_contingencies
+        if mod(i, number_of_contingencies) == 1
+            push!(hour_ids, i)
+        else
+            push!(cont_ids, i)
+        end
+    end
+
+    mn_data = _IM.replicate(data, number_of_hours * number_of_contingencies, Set{String}(["source_type", "name", "source_version", "per_unit"]))
+    mn_data["hour_ids"] = hour_ids
+    mn_data["cont_ids"] = cont_ids
+    mn_data["number_of_hours"] = number_of_hours
+    mn_data["number_of_contingencies"] = number_of_contingencies
+
+    for idx in 1:number_of_hours
+        hour = hours[idx]
+        nw_start = 1 + (idx - 1) * (number_of_contingencies)
+        nw_ids = nw_start:(nw_start + number_of_contingencies-1)
+        for nw in nw_ids
+            for (l, load) in mn_data["nw"]["$nw"]["load"]
+                load_bus = load["load_bus"]
+                area_code = data["bus"]["$load_bus"]["area"]
+                area = data["areas"]["$area_code"]
+                wind_dn = total_dn_demand["Wind"][area][hour]
+                if haskey(total_dn_demand["PV"], area)
+                    pv_dn = total_dn_demand["PV"][area][hour]
+                else
+                    pv_dn = 0
+                end
+                demand_trace = total_demand[area][hour] + dn_res_factor * (pv_dn + wind_dn)
+
+                if load["pd"] >= 0 
+                    q_ratio = data["load"][l]["qd"] / data["load"][l]["pd"]
+                    load["pd"] = data["load"][l]["pd"] / data["aggregated_data"][area]["demand"] * demand_trace
+                    load["qd"] = data["load"][l]["pd"] * q_ratio
+                end
+                if !isnothing(uc_result)
+                    write_uc_load_results!(load, uc_result, uc_hour, l)
+                end
+            end
+        end
+    end
+    for idx in 1:number_of_hours
+        hour = hours[idx]
+        nw_start = 1 + (idx - 1) * (number_of_contingencies)
+        nw_ids = nw_start:(nw_start + number_of_contingencies-1)
+        for nw in nw_ids
+            for (g, gen) in mn_data["nw"]["$nw"]["gen"]
+                trace = 1
+                if any(gen["name"] .== keys(rez_pv)) || any(gen["name"] .== keys(rez_wind))
+                    if any(gen["name"] .== keys(rez_pv)) && gen["type"] == "Solar"
+                        rez_name = gen["name"]
+                        trace = rez_pv[rez_name][hour]
+                    end
+                    if any(gen["name"] .== keys(rez_wind))  && gen["type"] == "Wind"
+                        rez_name = gen["name"]
+                        trace = rez_wind[rez_name][hour]
+                    end
+                elseif gen["gen_status"] == 1
+                    gen_bus = gen["gen_bus"]
+                    area_code = data["bus"]["$gen_bus"]["area"]
+                    area = data["areas"]["$area_code"]
+                    if gen["type"] == "Wind"
+                        trace = wind_series[area][hour]
+                    elseif gen["type"] == "Solar"
+                        if !isempty(pv_series[area])
+                            trace = pv_series[area][hour]
+                        end
+                    elseif gen["type"] == "VAr support"
+                        trace = 0
+                    end
+                end
+                gen["pmax"] = data["gen"][g]["pmax"] * trace
+                if !isnothing(uc_result)
+                    write_uc_gen_results!(gen, uc_result, uc_hour, g)
+                end
+            end
+        end
+    end
+    for (n, network) in mn_data["nw"]
+        network["zones"] = Dict{String, Any}("1" => Dict("source_id" => Any["zones", 1], "zone" => 1, "index" => 1), "2" => Dict("source_id" => Any["zones", 2], "zone" => 5, "index" => 2))
+        network["areas"] = Dict{String, Any}("1" => Dict("source_id" => Any["areas", 1], "area" => 1, "index" => 1), "2" => Dict("source_id" => Any["areas", 2], "area" => 3, "index" => 2), "3" => Dict("source_id" => Any["areas", 3], "area" => 4, "index" => 3), "4" => Dict("source_id" => Any["areas", 4], "area" => 5, "index" => 4))
+        for (b, bus) in network["bus"]
+            if bus["area"] == 5
+                bus["zone"] = 5
+            elseif bus["area"] == 2
+                bus["area"] = 1
+            end
+            if any(b .== ["211" "636" "349" "588" "489" "587" "585"])
+                bus["area"] = 3
+            elseif b == "986"
+                bus["area"] = 4
+            end
+        end
+        for (c, conv) in network["convdc"]
+            conv_bus = conv["busac_i"]
+            conv["zone"] = network["bus"]["$conv_bus"]["zone"]
+            conv["area"] = network["bus"]["$conv_bus"]["area"]
+        end
+        for (g, gen) in network["gen"]
+            if gen["gen_status"] == 1
+                gen_bus = gen["gen_bus"]
+                gen["zone"] = network["bus"]["$gen_bus"]["zone"]
+                gen["area"] = network["bus"]["$gen_bus"]["area"]
+            end
+        end
+    end
     for (n, network) in mn_data["nw"]
         if haskey(network, "aggregated_data")
             delete!(network, "aggregated_data")

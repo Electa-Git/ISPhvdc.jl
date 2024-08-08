@@ -123,17 +123,17 @@ function get_and_plot_objective_value(fmin, scenario, year, hours; extension = "
     o_dc = zeros(1, length(fmin))
     o_no_dc =  zeros(1, length(fmin))
 
-    for idx in sort(parse.(Int, collect(keys(objective_dc))))
+    for idx in 1:length(fmin)
         if !isnothing(objective_dc["$idx"])
-            o_dc[idx] = objective_dc["$idx"] / 1e6
+            o_dc[idx] = objective_dc["$idx"] 
         else
             o_dc[idx] = 0
         end
 
         if !isnothing(objective_no_dc["$idx"])
-            o_no_dc[idx] = objective_no_dc["$idx"] / 1e6
+            o_no_dc[idx] = objective_no_dc["$idx"] 
         else
-            o_no_dc[idx] = objective_no_dc["$(idx-1)"] / 1e6
+            o_no_dc[idx] = objective_no_dc["$(idx-1)"] 
         end
     end
 
@@ -160,14 +160,14 @@ function plot_calculation_time(fmin, scenario, year, hours; extension = "")
         time_no_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["solver",extension,"_time_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["solver_time",extension,"_dc.json"]))
     t_opt_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string
         t_opt_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["solver",extension,"_time_no_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["solver_time",extension,"_no_dc.json"]))
     t_opt_no_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string
@@ -195,7 +195,7 @@ function plot_calculation_time(fmin, scenario, year, hours; extension = "")
         xlabel = "\$f_{min}~in~Hz\$", ylabel = "\$t~in~s\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["calculation_time_no_dc.pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["calculation_time_no_dc",extension,".pdf"]))
     StatsPlots.savefig(p_no_dc, plot_filename)
 
     p_dc = StatsPlots.groupedbar(
@@ -204,7 +204,7 @@ function plot_calculation_time(fmin, scenario, year, hours; extension = "")
         xlabel = "\$f_{min}~in~Hz\$", ylabel = "\$t~in~s\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["calculation_time_dc.pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["calculation_time_dc",extension,".pdf"]))
     StatsPlots.savefig(p_dc, plot_filename)
 end
 
@@ -351,16 +351,16 @@ function plot_load_shedding(input_data, fmin, scenario, year, hours; extension =
 
 end
 
-function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, hours)
+function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, hours; extension = "")
     print("Loading results", "\n")
-    fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_with_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["f",fmin, extension,"_with_dc.json"]))
     result_dc = Dict{String, Any}()
     open(fn) do f
     dicttxt = read(f,String)  # file information to string
         result_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["f",fmin,"_without_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["f",fmin, extension,"_without_dc.json"]))
     result_no_dc = Dict{String, Any}()
     open(fn) do f
     dicttxt = read(f,String)  # file information to string
@@ -470,7 +470,7 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
         xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["wind_curtailment_without_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["wind_curtailment_without_dc_f",fmin, extension,".pdf"]))
     StatsPlots.savefig(p_wind_no_dc, plot_filename)
 
     p_wind_dc = StatsPlots.groupedbar(
@@ -479,7 +479,7 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
         xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["wind_curtailment_with_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["wind_curtailment_with_dc_f",fmin, extension,".pdf"]))
     StatsPlots.savefig(p_wind_dc, plot_filename)
 
     p_pv_no_dc = StatsPlots.groupedbar(
@@ -488,7 +488,7 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
         xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["pv_curtailment_without_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["pv_curtailment_without_dc_f",fmin, extension,".pdf"]))
     StatsPlots.savefig(p_pv_no_dc, plot_filename)
 
     p_pv_dc = StatsPlots.groupedbar(
@@ -497,7 +497,7 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
         xlabel = "\$hour~id\$", ylabel = "\$P_{curt}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["pv_curtailment_with_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["pv_curtailment_with_dc_f",fmin, extension,".pdf"]))
     StatsPlots.savefig(p_pv_dc, plot_filename)
 
     p_wind_no_dc = StatsPlots.groupedbar(
@@ -506,7 +506,7 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
         xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["wind_generation_without_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["wind_generation_without_dc_f",fmin, extension,".pdf"]))
     StatsPlots.savefig(p_wind_no_dc, plot_filename)
 
     p_wind_dc = StatsPlots.groupedbar(
@@ -514,8 +514,9 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
         bar_position = :stack,
         xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["wind_generation_with_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["wind_generation_with_dc_f",fmin, extension,".pdf"]))
     StatsPlots.savefig(p_wind_dc, plot_filename)
+    
 
     p_pv_no_dc = StatsPlots.groupedbar(
         x_values, gen_pv_no_dc, group = legend,
@@ -523,7 +524,7 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
         xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["pv_generation_without_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["pv_generation_without_dc_f",fmin, extension,".pdf"]))
     StatsPlots.savefig(p_pv_no_dc, plot_filename)
 
     p_pv_dc = StatsPlots.groupedbar(
@@ -532,8 +533,31 @@ function plot_res_generation_and_curtailment(input_data, fmin, scenario, year, h
         xlabel = "\$hour~id\$", ylabel = "\$P_{g}~in~MW\$",
         xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern"
     )
-    plot_filename = joinpath("results", scenario, year, hours,join(["pv_generation_with_dc_f",fmin,".pdf"]))
+    plot_filename = joinpath("results", scenario, year, hours,join(["pv_generation_with_dc_f",fmin, extension,".pdf"]))
     StatsPlots.savefig(p_pv_dc, plot_filename)
+
+
+
+    total_wind_dc = sum(gen_wind_dc, dims = 2)
+    total_wind_no_dc = sum(gen_wind_no_dc, dims = 2)
+
+
+    total_pv_dc = sum(gen_pv_dc, dims = 2)
+    total_pv_no_dc = sum(gen_pv_no_dc, dims = 2)
+
+    h = 1:size(total_wind_dc, 1)
+
+
+    p1 = Plots.plot(h, total_wind_no_dc, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{w}~in~MW\$", label = "without HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    Plots.plot!(p1, h, total_wind_dc, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{w}~in~MW\$",  label = "with HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    plot_filename = joinpath("results", scenario, year, hours, join(["wind_generation_f","$fmin",extension,"_comparison.pdf"]))
+    Plots.savefig(p1, plot_filename)
+
+    p1 = Plots.plot(h, total_pv_no_dc, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{pv}~in~MW\$", label = "without HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    Plots.plot!(p1, h, total_pv_dc, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$P_{pv}~in~MW\$",  label = "with HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    plot_filename = joinpath("results", scenario, year, hours, join(["pv_generation_f","$fmin",extension,"_comparison.pdf"]))
+    Plots.savefig(p1, plot_filename)
+
 end
 
 
@@ -934,6 +958,70 @@ function plot_largest_continegncy(scenario, year, h_, fmin, data_dict, hours; ex
     Plots.savefig(p1, plot_filename)
 end
 
+function plot_largest_continegncy(scenario, year, h_, fmin, hours; extension = "")
+
+    # data = data_dict["data"]
+    # total_demand_series = data_dict["total_demand_series"] 
+    # dn_demand_series = data_dict["dn_demand_series"]
+    # pv_series = data_dict["pv_series"]
+    # wind_series = data_dict["wind_series"]
+    # wind_rez = data_dict["wind_rez"]
+    # pv_rez = data_dict["pv_rez"]
+    # generator_contingencies = data_dict["generator_contingencies"] 
+    # no_dc_cont = data_dict["no_dc_cont"]
+    # dn_res_factor = data_dict["dn_res_factor"]
+    # p2p = data_dict["p2p"] 
+
+    fn = joinpath("results",scenario, year, h_, join(["f",fmin, extension, "_with_dc.json"]))
+    result_dc = Dict{String, Any}()
+    open(fn) do f
+    dicttxt = read(f,String)  # file information to string
+        result_dc = JSON.parse(dicttxt)  # parse and transform data
+    end
+
+    fn = joinpath("results",scenario, year, h_, join(["f",fmin, extension, "_without_dc.json"]))
+    result_no_dc = Dict{String, Any}()
+    open(fn) do f
+    dicttxt = read(f,String)  # file information to string
+        result_no_dc = JSON.parse(dicttxt)  # parse and transform data
+    end
+
+    pg_cont_h = zeros(1, length(hours))
+    pg_cont_dc_h = zeros(1, length(hours))
+
+    m = Int(length(result_no_dc["solution"]["nw"]) / length(hours))
+
+    for h in 1:length(hours)
+        idx = (h-1) * m + 1
+        for (c, cont) in result_no_dc["solution"]["nw"]["$idx"]["contingency"]
+            if haskey(cont, "gen_cont") && cont["gen_cont"] > 0.0
+                pg_cont_h[h] =  max(pg_cont_h[h], maximum(abs.([cont["gen_cont"], cont["conv_cont_plus"]])))
+            end
+        end
+        for (c, cont) in result_no_dc["solution"]["nw"]["$idx"]["contingency_l"]
+            if haskey(cont, "tieline_cont_plus") && cont["tieline_cont_plus"] > 0.0
+                pg_cont_h[h] =  max(pg_cont_h[h], maximum(cont["tieline_cont_plus"]))
+            end
+        end
+        for (c, cont) in result_dc["solution"]["nw"]["$idx"]["contingency"]
+            if haskey(cont, "gen_cont") && cont["gen_cont"] > 0.0
+                pg_cont_dc_h[h] =  max(pg_cont_dc_h[h], maximum(abs.([cont["gen_cont"], cont["conv_cont_plus"]])))
+            end
+        end
+        for (c, cont) in result_dc["solution"]["nw"]["$idx"]["contingency_l"]
+            if haskey(cont, "tieline_cont_plus") && cont["tieline_cont_plus"] > 0.0
+                pg_cont_dc_h[h] =  max(pg_cont_dc_h[h], maximum(cont["tieline_cont_plus"]))
+            end
+        end
+
+    end
+
+    p1 = Plots.plot(hours, pg_cont_h' .* 100, marker = :diamond, xlabel = "\$hour~id\$", ylabel = "\$MW\$", label = "without HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    Plots.plot!(p1, hours, pg_cont_dc_h'.* 100, marker = :diamond,  xlabel = "\$hour~id\$", ylabel = "\$MW\$", label = "with HVDC contribution", xtickfont = "Computer Modern", ytickfont = "Computer Modern", fontfamily = "Computer Modern")
+    plot_filename = joinpath("results",scenario, year, h_, join(["max_continegncies_", fmin ,extension,".pdf"]))
+    Plots.savefig(p1, plot_filename)
+end
+
 
 function plot_calculation_time(fmin, fmin_::Float64, scenario::String, year::String, hours::String; extension = "")
     fn = joinpath("results", scenario, year, hours, join(["calculation",extension,"_time_dc.json"]))
@@ -943,7 +1031,7 @@ function plot_calculation_time(fmin, fmin_::Float64, scenario::String, year::Str
         time_dc = JSON.parse(dicttxt)  # parse and transform data
     end
 
-    fn = joinpath("results", scenario, year, hours, join(["calculation",extension,"_time_no_dc.json"]))
+    fn = joinpath("results", scenario, year, hours, join(["calculation_time",extension,"_no_dc.json"]))
     time_no_dc = Dict{String, Any}()
     open(fn) do f
         dicttxt = read(f,String)  # file information to string

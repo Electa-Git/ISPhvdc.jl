@@ -1,4 +1,4 @@
-function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h; droop = false, extension = "")
+function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h; lean = false, droop = false, extension = "")
 
     objective_dc = Dict{String, Any}(["$i"=>[] for i in 1:length(fmin)])
     objective_no_dc = Dict{String, Any}(["$i"=>[] for i in 1:length(fmin)])
@@ -30,12 +30,22 @@ function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h; droop = false, 
         adjust_minimum_freqeuncy!(mn_data, fmin_)
 
         if droop == false
-            s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => true, "relax_uc_binaries" => true)
-            t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            if lean == false
+                s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => true, "relax_uc_binaries" => true)
+                t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            else
+                s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "relax_uc_binaries" => true, "uc_reserves" => false, "hvdc_inertia_contribution" => true)
+                t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc_lean(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            end
             filename = joinpath("results", scenario, y, h, join(["f",fmin_,extension,"_with_dc.json"]))
         else
-            s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => true, "relax_uc_binaries" => true, "use_droop" => true)
-            t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            if lean == false
+                s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => true, "relax_uc_binaries" => true, "use_droop" => true)
+                t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            else
+                s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "relax_uc_binaries" => true, "uc_reserves" => false, "hvdc_inertia_contribution" => true)
+                t_dc["$idx"] = @elapsed result_dc = CbaOPF.solve_fsuc_lean(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            end
             filename = joinpath("results", scenario, y, h, join(["f",fmin_,extension,"_with_dc.json"]))
         end
 
@@ -49,12 +59,22 @@ function batch_fsuc(mn_data, fmin, dc_solver, scenario, year, h; droop = false, 
         json_string = nothing
 
         if droop == false
-            s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => false, "relax_uc_binaries" => true)
-            t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            if lean == false
+                s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => false, "relax_uc_binaries" => true)
+                t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            else
+                s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "relax_uc_binaries" => true, "uc_reserves" => false, "hvdc_inertia_contribution" => false)
+                t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc_lean(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            end
             filename = joinpath("results", scenario, y, h, join(["f",fmin_,extension,"_without_dc.json"]))
         else
-            s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => false, "relax_uc_binaries" => true, "use_droop" => true)
-            t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            if lean == false
+                s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "hvdc_inertia_contribution" => false, "relax_uc_binaries" => true, "use_droop" => true)
+                t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            else
+                s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "relax_uc_binaries" => true, "uc_reserves" => false, "hvdc_inertia_contribution" => false)
+                t_no_dc["$idx"] = @elapsed result_no_dc = CbaOPF.solve_fsuc_lean(mn_data, _PM.DCPPowerModel, dc_solver, setting = s, multinetwork = true)
+            end
             filename = joinpath("results", scenario, y, h, join(["f",fmin_,extension,"_without_dc.json"]))
         end
         json_string = JSON.json(result_no_dc)

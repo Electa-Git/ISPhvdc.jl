@@ -691,13 +691,10 @@ function generator_uc_data!(data; fcr_cost = 50, droop_fac = 1)
             else
                 gen["start_up_cost"] = 0.0
             end
-            if haskey(gen, "Ramp_Up_Rate(MW/h)")
+            if haskey(gen, "Ramp_Up_Rate(MW/h)") 
                 gen["ramp_rate"] =   (gen["Ramp_Up_Rate(MW/h)"] / data["baseMVA"]) / gen["pmax"] # in percent of maximum rating per hour
                 gen["mdt"] =   max(1, Int(gen["Minimum_Off_Time(Hours)"] / data["frequency_parameters"]["uc_time_interval"]))
                 gen["mut"] =   max(1, Int(gen["Minimum_On_Time(Hours)"] / data["frequency_parameters"]["uc_time_interval"]))
-                cost_var = gen["variable_op_cost(dollar/MWh_sent_out)"] * data["baseMVA"]
-                cost_fixed = (gen[ "noload_cost(dollar/MW/year)"] + gen["noload_recurring_cost(dollar/MW/year)"] + gen["fixed_op_cost(dollar/MW/year)"]) * gen["pmax"] * data["baseMVA"] / (8760 / data["frequency_parameters"]["uc_time_interval"])
-                gen["cost"] = [cost_var cost_fixed]
                 gen["ramp_rate_per_s"] =   (gen["Ramp_Up_Rate(MW/h)"] / data["baseMVA"] / 3600) * droop_fac
                 gen["fcr_contribution"] = true
             else
@@ -707,8 +704,20 @@ function generator_uc_data!(data; fcr_cost = 50, droop_fac = 1)
                 gen["mdt"] = Int(1 / data["frequency_parameters"]["uc_time_interval"])
                 gen["mut"] = Int(1 / data["frequency_parameters"]["uc_time_interval"])
             end
-            if gen["type"] == "Wind" || gen["type"] == "Solar"
-                gen["cost"] = [0.0 0.0]
+            idx = 1
+            if  haskey(gen, "variable_op_cost(dollar/MWh_sent_out)")
+                if gen["type"] == "Fossil"               
+                    cost_var = max(25.0, gen["variable_op_cost(dollar/MWh_sent_out)"]) * data["baseMVA"]
+                else
+                    cost_var = gen["variable_op_cost(dollar/MWh_sent_out)"]* data["baseMVA"] 
+                end
+                cost_fixed = ((gen["fixed_op_cost(dollar/MW/year)"]) * gen["pmax"] * data["baseMVA"]/ (8760 / data["frequency_parameters"]["uc_time_interval"]))
+                cost_fixed = 0
+                gen["cost"] = [cost_var cost_fixed]
+            elseif gen["type"] == "Wind" || gen["type"] == "Solar"
+                cost = 5.0 + idx * 0.005
+                gen["cost"] = [cost 0.0] *  data["baseMVA"]
+                idx += 1
             end
         else
             delete!(data["gen"], g)
