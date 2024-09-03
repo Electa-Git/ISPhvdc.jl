@@ -277,8 +277,7 @@ function make_rez_time_series(res_ts)
     return ts
 end
 
-function add_rez_and_connections!(data, extensions, rez)
-
+function add_rez_and_connections!(data, extensions, rez; max_gen_power=1000, skip_zero_capacity_rez=false)
     for row in eachrow(extensions["ac"])
         if row[1] !== "REZ ID"
             if row[15] !== 0
@@ -288,7 +287,7 @@ function add_rez_and_connections!(data, extensions, rez)
                 add_ac_bus!(data, row, tbus)
             end
             add_ac_branch!(data, row, tbus)
-            add_generator!(data, row, tbus, rez)
+            add_rez_generators!(data, row, tbus, rez, max_gen_power, skip_zero_capacity_rez)
         end
     end
 
@@ -315,7 +314,7 @@ function add_rez_and_connections!(data, extensions, rez)
                 add_dc_branch!(data, row, fbusdc, tbusdc; rez_connection=false)
             end
             if row[1] !== "MARINUS"
-                add_generator!(data, row, tbus, rez)
+                add_rez_generators!(data, row, tbus, rez, max_gen_power, skip_zero_capacity_rez)
             end
         end
     end
@@ -392,39 +391,97 @@ function add_ac_bus!(data, row, tbus)
     push!(data["bus"], "$tbus" => bus)
 end
 
-function add_generator!(data, row, tbus, rez_capacities; max_gen_power=1000)
-    if any(row[1] .== rez_capacities["pv"][:, 3])
-        rez_id = findfirst(row[1] .== rez_capacities["pv"][:, 3])
-        rez_power = rez_capacities["pv"][rez_id, :][end]
-        gens = Int(floor(rez_power / max_gen_power))
-        for idx in 1:(gens+1)
-            gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
-            gen_power = max(0, min(max_gen_power, (rez_power - (idx * max_gen_power))))
-            gen = generator_data(tbus, rez_capacities["pv"][rez_id, :], gen_power, gen_id, "Solar", data["baseMVA"])
-            push!(data["gen"], "$gen_id" => gen)
-        end
+function add_rez_generators!(data, row, tbus, rez_capacities, max_gen_power, skip_zero_capacity_rez)
+    # add PV generators
+    rez_id = findfirst(row[1] .== rez_capacities["pv"][:, 3])
+    rez_power = rez_capacities["pv"][rez_id, :][end]
+    rez_name = rez_capacities["pv"][rez_id, :][3]
+    if rez_power != 0 || skip_zero_capacity_rez == false
+        add_rez_pv!(data, rez_name, rez_power, tbus, max_gen_power)
     end
-    if any(row[1] .== rez_capacities["onshore_wind"][:, 3])
-        rez_id = findfirst(row[1] .== rez_capacities["onshore_wind"][:, 3])
-        rez_power = rez_capacities["onshore_wind"][rez_id, :][end]
-        gens = Int(floor(rez_power / max_gen_power))
-        for idx in 1:(gens+1)
-            gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
-            gen_power = max(0, min(max_gen_power, (rez_power - (idx * max_gen_power))))
-            gen = generator_data(tbus, rez_capacities["onshore_wind"][rez_id, :], gen_power, gen_id, "Wind", data["baseMVA"])
-            push!(data["gen"], "$gen_id" => gen)
-        end
+
+    # add onshore wind generators
+    rez_id = findfirst(row[1] .== rez_capacities["onshore_wind"][:, 3])
+    rez_power = rez_capacities["onshore_wind"][rez_id, :][end]
+    rez_name = rez_capacities["onshore_wind"][rez_id, :][3]
+    if rez_power != 0 || skip_zero_capacity_rez == false
+        add_rez_wind!(data, rez_name, rez_power, tbus, max_gen_power)
     end
 
     # To Do: Add offshore wind
 end
 
-function generator_data(tbus, rez, power, gen_id, type, basemva)
+function add_rez_pv!(data, rez_name, rez_power, tbus, max_gen_power)
+    if max_gen_power != nothing
+        n_gens = Int(floor(rez_power / max_gen_power)) + 1
+        for idx in 1:n_gens
+            gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
+            gen_power = idx == n_gens ? mod(rez_power, max_gen_power) : max_gen_power
+            gen = generator_data(
+                "pv_$(rez_name)_$idx",
+                tbus,
+                gen_power,
+                gen_id,
+                "Solar",
+                data["baseMVA"]
+            )
+            push!(data["gen"], "$gen_id" => gen)
+            println("Added generator pv_$(rez_name)_$idx with pmax = $gen_power")
+        end
+    else
+        gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
+        gen = generator_data(
+            "pv_$(rez_name)_1",
+            tbus,
+            rez_power,
+            gen_id,
+            "Solar",
+            data["baseMVA"]
+        )
+        push!(data["gen"], "$gen_id" => gen)
+        println("Added generator pv_$(rez_name)_1 with pmax = $rez_power")
+    end
+end
+
+function add_rez_wind!(data, rez_name, rez_power, tbus, max_gen_power)
+    if max_gen_power != nothing
+        n_gens = Int(floor(rez_power / max_gen_power)) + 1
+        for idx in 1:n_gens
+            gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
+            gen_power = idx == n_gens ? mod(rez_power, max_gen_power) : max_gen_power
+            gen = generator_data(
+                "wtg_$(rez_name)_$idx",
+                tbus,
+                gen_power,
+                gen_id,
+                "Wind",
+                data["baseMVA"]
+            )
+            push!(data["gen"], "$gen_id" => gen)
+            println("Added generator wtg_$(rez_name)_$idx with pmax = $gen_power")
+        end
+    else
+        gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
+        gen = generator_data(
+            "wtg_$(rez_name)_1",
+            tbus,
+            rez_power,
+            gen_id,
+            "Wind",
+            data["baseMVA"]
+        )
+        push!(data["gen"], "$gen_id" => gen)
+        println("Added generator wtg_$(rez_name)_1 with pmax = $rez_power")
+    end
+end
+
+function generator_data(gen_name, tbus, power, gen_id, type, basemva)
     gen = Dict{String,Any}()
-    gen["mbase"] = gen["pmax"] = power / basemva
+    gen["pmax"] = power / basemva
     gen["qmax"] = power / 2 / basemva
     gen["qmin"] = -power / 2 / basemva
-    gen["name"] = rez[3]
+    gen["mbase"] = abs(gen["pmax"] + gen["qmax"] * 1im)
+    gen["name"] = gen_name
     gen["pmin"] = gen["qg"] = gen["pg"] = 0
     gen["ncost"] = 2
     gen["model"] = 2
