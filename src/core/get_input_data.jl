@@ -287,7 +287,9 @@ function add_rez_and_connections!(data, extensions, rez; max_gen_power=1000, ski
                 add_ac_bus!(data, row, tbus)
             end
             add_ac_branch!(data, row, tbus)
-            add_rez_generators!(data, row, tbus, rez, max_gen_power, skip_zero_capacity_rez)
+            if !(row[1] == "N1" && row[3] != "NA") # N1 has two lines added in the data
+                add_rez_generators!(data, row, tbus, rez, max_gen_power, skip_zero_capacity_rez)
+            end
         end
     end
 
