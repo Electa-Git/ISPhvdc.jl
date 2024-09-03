@@ -480,7 +480,7 @@ function generator_data(gen_name, tbus, power, gen_id, type, basemva)
     gen["pmax"] = power / basemva
     gen["qmax"] = power / 2 / basemva
     gen["qmin"] = -power / 2 / basemva
-    gen["mbase"] = abs(gen["pmax"] + gen["qmax"] * 1im)
+    gen["mbase"] = abs(gen["pmax"] + gen["qmax"] * 1im) * basemva
     gen["name"] = gen_name
     gen["pmin"] = gen["qg"] = gen["pg"] = 0
     gen["ncost"] = 2
