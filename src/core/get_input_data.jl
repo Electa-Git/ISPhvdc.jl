@@ -491,7 +491,7 @@ function generator_data(gen_name, tbus, power, gen_id, type, basemva)
     gen["index"] = gen_id
     gen["fuel"] = type
     gen["cost"] = [1.0 0.0] # check for correct costs later
-    gen["gen_status"] = 1
+    gen["gen_status"] = power == 0 ? 0 : 1
     gen["type"] = type
 
     return gen
