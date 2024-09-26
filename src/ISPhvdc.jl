@@ -11,7 +11,7 @@ import InfrastructureModels
 const _IM = InfrastructureModels
 import PowerModelsACDC
 const _PMACDC = PowerModelsACDC
-import CbaOPF
+# import CbaOPF
 import JSON
 import XLSX
 import ExcelFiles
@@ -19,10 +19,10 @@ const _EF = ExcelFiles
 import StringDistances
 const _SD = StringDistances
 import Downloads
-import InfoZIP
-import Plots
-import PlotlyJS
-import StatsPlots
+# import InfoZIP
+# import Plots
+# import PlotlyJS
+# import StatsPlots
 
 
 # Create our module level logger (this will get precompiled)
@@ -35,8 +35,8 @@ __init__() = Memento.register(_LOGGER)
 include("core/get_input_data.jl")
 include("core/hosting_capacity.jl")
 include("core/opf_timeseries.jl")
-include("core/batch_calculations.jl")
-include("core/process_results.jl")
+# include("core/batch_calculations.jl")
+# include("core/process_results.jl")
 
 
 end # module ISPhvdc
