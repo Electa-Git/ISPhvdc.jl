@@ -102,13 +102,26 @@ function aggregate_demand(demand)
     return aggregated_demand
 end
 
-
-function get_rez_capacity_data(scenario, year; data_dir="data")
+function get_rez_capacity_data(scenario, year, data_dir; CDP="CDP10")
     data_folder = joinpath(data_dir, "Generation Outlook", "Final ISP Results", "Scenarios")
     file_name = joinpath(data_folder, join(["2022 Final ISP results workbook - ", scenario[10:end], " - Updated Inputs.xlsx"]))
-    rez_pv = XLSX.readdata(file_name, "REZ Generation Capacity", "A419:AG455")
-    rez_onshore_wind = XLSX.readdata(file_name, "REZ Generation Capacity", "A457:AG493") # Counterfactual -> has largest installed RES
-    rez_offshore_wind = XLSX.readdata(file_name, "REZ Generation Capacity", "A495:AG500")# Counterfactual -> has largest installed RES
+    rez_all_data = XLSX.readtable(file_name, "REZ Generation Capacity", "A:AG", first_row=3, header=true, stop_in_empty_row=false,) |> _DF.DataFrame # read all data
+    rez_all_data = nothing
+    try
+        rez_all_data = _DF.DataFrame(
+            XLSX.readtable(file_name, "REZ Generation Capacity", "A:AG", first_row=3, header=true, stop_in_empty_row=false,)...
+        ) # when called with v0.7.10
+    catch
+        rez_all_data = _DF.DataFrame(
+            XLSX.readtable(file_name, "REZ Generation Capacity", "A:AG", first_row=3, header=true, stop_in_empty_row=false,)
+        ) # when called with v10.2
+    end
+    filter!(row -> isequal(row.CDP, CDP), rez_all_data) # filter for the CDP
+
+    # extract the data for solar, onshore wind and offshore wind
+    rez_pv = Matrix(filter(row -> row.Technology == "Solar", rez_all_data))
+    rez_onshore_wind = Matrix(filter(row -> row.Technology == "Wind", rez_all_data))
+    rez_offshore_wind = Matrix(filter(row -> row.Technology == "Offshore Wind", rez_all_data))
 
     REZ_capacity = Dict{String,Any}()
 
@@ -124,6 +137,7 @@ function get_rez_capacity_data(scenario, year; data_dir="data")
 
     return REZ_capacity
 end
+
 
 function get_rez_grid_extensions(; data_dir="data")
     file_name = joinpath(data_dir, "NEM_REZ_extensions.xlsx")
