@@ -102,7 +102,7 @@ function aggregate_demand(demand)
     return aggregated_demand
 end
 
-function get_rez_capacity_data(scenario, year, data_dir; CDP="CDP10")
+function get_rez_capacity_data(scenario, year; data_dir="data", CDP="CDP10")
     data_folder = joinpath(data_dir, "Generation Outlook", "Final ISP Results", "Scenarios")
     file_name = joinpath(data_folder, join(["2022 Final ISP results workbook - ", scenario[10:end], " - Updated Inputs.xlsx"]))
     rez_all_data = XLSX.readtable(file_name, "REZ Generation Capacity", "A:AG", first_row=3, header=true, stop_in_empty_row=false,) |> _DF.DataFrame # read all data
@@ -401,34 +401,6 @@ function add_ac_bus!(data, row, tbus)
 
     push!(data["bus"], "$tbus" => bus)
 end
-
-function add_generator!(data, row, tbus, rez_capacities; max_gen_power=1000)
-    if any(row[1] .== rez_capacities["pv"][:, 3])
-        rez_id = findfirst(row[1] .== rez_capacities["pv"][:, 3])
-        rez_power = rez_capacities["pv"][rez_id, :][end]
-        gens = Int(floor(rez_power / max_gen_power))
-        for idx in 1:(gens+1)
-            gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
-            gen_power = max(0, min(max_gen_power, (rez_power - (idx * max_gen_power))))
-            gen = generator_data(tbus, rez_capacities["pv"][rez_id, :], gen_power, gen_id, "Solar", data["baseMVA"])
-            push!(data["gen"], "$gen_id" => gen)
-        end
-    end
-    if any(row[1] .== rez_capacities["onshore_wind"][:, 3])
-        rez_id = findfirst(row[1] .== rez_capacities["onshore_wind"][:, 3])
-        rez_power = rez_capacities["onshore_wind"][rez_id, :][end]
-        gens = Int(floor(rez_power / max_gen_power))
-        for idx in 1:(gens+1)
-            gen_id = maximum(sort(parse.(Int, keys(data["gen"])))) + 1
-            gen_power = max(0, min(max_gen_power, (rez_power - (idx * max_gen_power))))
-            gen = generator_data(tbus, rez_capacities["onshore_wind"][rez_id, :], gen_power, gen_id, "Wind", data["baseMVA"])
-            push!(data["gen"], "$gen_id" => gen)
-        end
-    end
-
-    # To Do: Add offshore wind
-end
-
 
 function add_rez_generators!(data, row, tbus, rez_capacities, max_gen_power, skip_zero_capacity_rez)
     # add PV generators
