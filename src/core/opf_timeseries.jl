@@ -37,7 +37,7 @@ function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, average_
                 if !isempty(pv_series[area])
                     trace = pv_series[area][hour]
                 end
-            elseif gen["type"] == "VAr support"
+            elseif gen["type"] in ["VAr support", "SVC"]
                 trace = 0
             end
         end
