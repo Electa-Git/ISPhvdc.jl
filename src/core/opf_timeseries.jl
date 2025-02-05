@@ -19,13 +19,12 @@ function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, average_
 
     for (g, gen) in hourly_data["gen"]
         trace = 1
-        if any(gen["name"] .== keys(rez_pv)) || any(gen["name"] .== keys(rez_wind))
-            if any(gen["name"] .== keys(rez_pv)) && gen["type"] == "Solar"
-                rez_name = gen["name"]
+        if any(occursin.(rez_names, gen["name"])) # generators in REZ's
+            rez_name = split(gen["name"], "_")[2]
+            if gen["type"] == "Solar"
                 trace = rez_pv[rez_name][hour]
             end
-            if any(gen["name"] .== keys(rez_wind)) && gen["type"] == "Wind"
-                rez_name = gen["name"]
+            if gen["type"] == "Wind"
                 trace = rez_wind[rez_name][hour]
             end
         elseif gen["gen_status"] == 1
