@@ -297,7 +297,9 @@ function add_rez_and_connections!(data, extensions, rez; max_gen_power=1000, ski
                 add_ac_bus!(data, row, tbus)
             end
             add_ac_branch!(data, row, tbus)
-            add_rez_generators!(data, row, tbus, rez, max_gen_power, skip_zero_capacity_rez)
+            if !(row[1] == "N1" && row[3] != "NA") # stops adding a duplicate N1 generator at the connection bus
+                add_rez_generators!(data, row, tbus, rez, max_gen_power, skip_zero_capacity_rez)
+            end
         end
     end
 
