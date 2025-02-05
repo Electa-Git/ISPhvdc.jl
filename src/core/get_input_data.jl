@@ -105,7 +105,7 @@ end
 function get_rez_capacity_data(scenario, year; data_dir="data", CDP="CDP10")
     data_folder = joinpath(data_dir, "Generation Outlook", "Final ISP Results", "Scenarios")
     file_name = joinpath(data_folder, join(["2022 Final ISP results workbook - ", scenario[10:end], " - Updated Inputs.xlsx"]))
-    rez_all_data = XLSX.readtable(file_name, "REZ Generation Capacity", "A:AG", first_row=3, header=true, stop_in_empty_row=false,) |> _DF.DataFrame # read all data
+    # rez_all_data = XLSX.readtable(file_name, "REZ Generation Capacity", "A:AG", first_row=3, header=true, stop_in_empty_row=false,) |> _DF.DataFrame # read all data
     rez_all_data = nothing
     try
         rez_all_data = _DF.DataFrame(
@@ -484,7 +484,7 @@ function add_rez_wind!(data, rez_name, rez_power, tbus, max_gen_power)
     end
 end
 
-function generator_data(gen_name, tbus, rez, power, gen_id, type, basemva)
+function generator_data(gen_name, tbus, power, gen_id, type, basemva)
     gen = Dict{String,Any}()
     gen["name"] = gen_name
     gen["pmax"] = power / basemva
