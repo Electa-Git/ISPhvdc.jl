@@ -17,6 +17,7 @@ function prepare_hourly_opf_data!(hourly_data, grid_data, total_demand, average_
         end
     end
 
+    rez_names = union(keys(rez_wind), keys(rez_pv))
     for (g, gen) in hourly_data["gen"]
         trace = 1
         if any(occursin.(rez_names, gen["name"])) # generators in REZ's
